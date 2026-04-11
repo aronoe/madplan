@@ -45,6 +45,7 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
 
   // ── Preview state ──────────────────────────────────────────────────────────
   const [previewPlan, setPreviewPlan] = useState<Recipe[] | null>(null);
+  const [planVersion, setPlanVersion] = useState(0);
   // All recipes cached after first generate — passed to WeekPreview for per-day swaps
   const [cachedRecipes, setCachedRecipes] = useState<Recipe[]>([]);
   // Soft warning shown in preview when fewer recipes found than days requested
@@ -143,6 +144,7 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
         return;
       }
       setPreviewPlan(plan);
+      setPlanVersion((v) => v + 1); // forces WeekPreview remount with fresh state
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ukendt fejl ved generering");
     } finally {
@@ -155,7 +157,10 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
     setGenerating(true);
     try {
       const plan = await generatePlan();
-      if (plan.length > 0) setPreviewPlan(plan);
+      if (plan.length > 0) {
+        setPreviewPlan(plan);
+        setPlanVersion((v) => v + 1);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ukendt fejl ved generering");
     } finally {
@@ -200,6 +205,7 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
         {previewPlan ? (
           <>
             <WeekPreview
+              key={planVersion}
               plan={previewPlan}
               allRecipes={cachedRecipes}
               selectedIngredients={selectedIngredients}
