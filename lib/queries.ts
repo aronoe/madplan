@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
+import { aggregateIngredients } from "@/lib/ingredientUtils";
 
 export function getWeekStart(offset = 0): string {
   const now = new Date();
@@ -170,26 +171,19 @@ export async function getIngredientsForMealPlan(
   if (ingError) throw ingError;
   if (!rows) return [];
 
-  const map = new Map<string, AggregatedIngredient>();
-  for (const row of rows as unknown as Array<{
-    amount: number;
-    unit: string;
-    ingredients: { name: string } | null;
-  }>) {
-    const name = row.ingredients?.name;
-    if (!name) continue;
-    const key = `${name.toLowerCase()}__${row.unit.toLowerCase()}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.amount += row.amount;
-    } else {
-      map.set(key, { name, amount: row.amount, unit: row.unit });
-    }
-  }
+  const flatRows = (
+    rows as unknown as Array<{
+      amount: number;
+      unit: string;
+      ingredients: { name: string } | null;
+    }>
+  ).map((row) => ({
+    name: row.ingredients?.name ?? "",
+    amount: row.amount,
+    unit: row.unit,
+  }));
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.name.localeCompare(b.name, "da"),
-  );
+  return aggregateIngredients(flatRows);
 }
 
 export async function getRecipesWithIngredient(
