@@ -146,7 +146,11 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
       setPreviewPlan(plan);
       setPlanVersion((v) => v + 1); // forces WeekPreview remount with fresh state
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ukendt fejl ved generering");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Kunne ikke generere ugeplanen. Tjek din forbindelse og prøv igen.",
+      );
     } finally {
       setGenerating(false);
     }
@@ -162,7 +166,11 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
         setPlanVersion((v) => v + 1);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ukendt fejl ved generering");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Kunne ikke regenerere ugeplanen. Prøv igen.",
+      );
     } finally {
       setGenerating(false);
     }
@@ -193,7 +201,11 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
       }
       router.push("/madplan");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ukendt fejl ved gemning");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Kunne ikke gemme ugeplanen. Tjek din forbindelse og prøv igen.",
+      );
       setApproving(false);
     }
   }

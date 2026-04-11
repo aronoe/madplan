@@ -495,25 +495,43 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
           </button>
         </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 10,
-            marginBottom: 28,
-          }}
-        >
-          {Array.from({ length: 7 }, (_, i) => (
-            <DagSlot
-              key={i}
-              dayIndex={i}
-              meal={meals[i] ?? null}
-              isSelected={selectedDay === i}
-              onSelect={() => setSelectedDay(i)}
-              onClear={() => handleClear(i)}
-            />
-          ))}
-        </div>
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 10,
+              marginBottom: 28,
+            }}
+          >
+            {Array.from({ length: 7 }, (_, i) => (
+              <DagSlot
+                key={i}
+                dayIndex={i}
+                meal={meals[i] ?? null}
+                isSelected={selectedDay === i}
+                onSelect={() => setSelectedDay(i)}
+                onClear={() => handleClear(i)}
+              />
+            ))}
+          </div>
+          {/* Empty week guidance */}
+          {plannedCount === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "12px 0 8px",
+                color: "#7aad8a",
+                fontSize: 14,
+              }}
+            >
+              Ingen retter planlagt denne uge.{" "}
+              <a href="/" style={{ color: "#4caf82", fontWeight: 700 }}>
+                Brug auto-planlæggeren →
+              </a>
+            </div>
+          )}
+        </>
       )}
 
       {/* Drag overlay */}
