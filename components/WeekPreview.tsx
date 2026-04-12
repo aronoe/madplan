@@ -6,7 +6,7 @@ import type { Tempo } from "@/lib/autoSelect";
 import { pickOneRecipe } from "@/lib/autoSelect";
 import RecipePicker from "@/components/RecipePicker";
 import { cn } from "@/lib/cn";
-import { UtensilsCrossed, RefreshCw, Pin, CheckCircle, Plus } from "lucide-react";
+import { UtensilsCrossed, RefreshCw, Pin, CheckCircle, Plus, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
@@ -179,7 +179,7 @@ export default function WeekPreview({
                       title="Fjern dag"
                       className="flex items-center justify-center w-7 h-7 rounded-md text-(--color-danger) hover:bg-(--color-danger-subtle) transition-colors"
                     >
-                      ×
+                      <X size={14} />
                     </button>
                   )}
                 </div>

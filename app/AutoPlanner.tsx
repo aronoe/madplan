@@ -229,13 +229,15 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
             onRegenerate={handleRegenerate}
             onApprove={handleApprove}
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setPreviewPlan(null)}
-            className="mt-4 bg-transparent border-none text-(--color-text-muted) cursor-pointer text-[13px] underline"
+            className="mt-4 underline"
           >
             ← Tilbage til indstillinger
-          </button>
+          </Button>
           {error && (
             <div className="mt-3 bg-(--color-danger-subtle) border border-(--color-danger) rounded-xl p-3 text-sm text-(--color-danger) max-w-lg w-full">
               {error}
@@ -340,7 +342,7 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
                       "flex items-center gap-2.5 cursor-pointer px-3.5 py-2.5 rounded-xl border transition-colors",
                       tempo === value
                         ? "border-(--color-primary) bg-(--color-active-bg)"
-                        : "border-(--color-border) bg-(--color-bg) hover:border-(--color-primary)/50"
+                        : "border-(--color-border) bg-(--color-bg) hover:border-(--color-primary)"
                     )}
                   >
                     <input
