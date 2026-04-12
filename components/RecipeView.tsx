@@ -5,6 +5,7 @@ import { getIngredientsForRecipe, getRecipeSteps } from "@/lib/queries";
 import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { Clock, UtensilsCrossed, FolderOpen, Pencil, X, CheckCircle } from "lucide-react";
+import RecipeImage from "@/components/ui/RecipeImage";
 
 type Props = {
   recipe: Recipe;
@@ -39,10 +40,21 @@ export default function RecipeView({ recipe, onClose, onEdit }: Props) {
 
       {/* Modal */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-lg bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[90vh] z-200 flex flex-col">
+        {/* Hero image — only when available */}
+        {recipe.image_url && (
+          <RecipeImage
+            src={recipe.image_url}
+            alt={recipe.name}
+            className="w-full aspect-video shrink-0 rounded-none"
+          />
+        )}
+
         {/* Header */}
         <div className="px-6 pt-6 pb-0 flex justify-between items-start gap-3">
           <div>
-            <div className="text-[40px] mb-1.5">{recipe.emoji}</div>
+            {!recipe.image_url && (
+              <div className="text-[40px] mb-1.5">{recipe.emoji}</div>
+            )}
             <h2 className="m-0 text-[22px] font-extrabold text-(--color-text)">
               {recipe.name}
             </h2>

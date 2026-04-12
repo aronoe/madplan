@@ -27,6 +27,7 @@ export interface Recipe {
   category: string | null;
   servings: number | null;
   notes: string | null;
+  image_url: string | null;
 }
 
 export interface RecipeStep {

@@ -3,6 +3,7 @@
 import type { Recipe } from "@/lib/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import RecipeImage from "@/components/ui/RecipeImage";
 import RecipeIngredientEditor from "./RecipeIngredientEditor";
 import { Carrot, BookOpen, Clock, Users, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -31,12 +32,8 @@ export default function RecipeCard({
           : "border-(--color-border)",
       )}
     >
-      {/* ── Image placeholder ─────────────────────────────────────────── */}
-      <div className="aspect-4/3 bg-(--color-surface-2) flex items-center justify-center shrink-0">
-        <span className="text-6xl select-none" aria-hidden="true">
-          {r.emoji}
-        </span>
-      </div>
+      {/* ── Image / placeholder ───────────────────────────────────────── */}
+      <RecipeImage src={r.image_url} alt={r.name} emoji={r.emoji} className="shrink-0" />
 
       {/* ── Card body ─────────────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 p-4">
