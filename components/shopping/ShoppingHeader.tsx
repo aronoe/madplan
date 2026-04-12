@@ -1,5 +1,8 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { cn } from "@/lib/cn";
+
 interface ShoppingHeaderProps {
   weekLabel: string;
   weekOffset: number;
@@ -7,6 +10,9 @@ interface ShoppingHeaderProps {
   onNext: () => void;
   onToday: () => void;
 }
+
+const navBtnClass =
+  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-xs font-semibold text-(--color-text-mid) hover:bg-(--color-surface-2) transition-colors flex items-center gap-1";
 
 export default function ShoppingHeader({
   weekLabel,
@@ -16,40 +22,31 @@ export default function ShoppingHeader({
   onToday,
 }: ShoppingHeaderProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 20,
-        flexWrap: "wrap",
-        gap: 8,
-      }}
-    >
-      <h1 style={{ color: "var(--c-text-dark)", fontSize: 26, fontWeight: 800, margin: 0 }}>
-        🛒 Indkøbsliste
+    <div className="flex items-center justify-between flex-wrap gap-2 mb-5">
+      <h1 className="flex items-center gap-2 text-2xl font-extrabold text-(--color-text)">
+        <ShoppingCart size={22} className="text-(--color-primary)" />
+        Indkøbsliste
       </h1>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button onClick={onPrev} style={navBtnStyle}>← Forrige</button>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--c-text-mid)", minWidth: 140, textAlign: "center" }}>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onPrev} className={navBtnClass}>
+          <ChevronLeft size={14} /> Forrige
+        </button>
+        <span className="text-sm font-semibold text-(--color-text-mid) min-w-35 text-center">
           {weekLabel}
         </span>
-        <button onClick={onNext} style={navBtnStyle}>Næste →</button>
+        <button type="button" onClick={onNext} className={navBtnClass}>
+          Næste <ChevronRight size={14} />
+        </button>
         {weekOffset !== 0 && (
-          <button onClick={onToday} style={{ ...navBtnStyle, color: "#4caf82" }}>I dag</button>
+          <button
+            type="button"
+            onClick={onToday}
+            className={cn(navBtnClass, "text-(--color-primary)")}
+          >
+            I dag
+          </button>
         )}
       </div>
     </div>
   );
 }
-
-const navBtnStyle: React.CSSProperties = {
-  background: "var(--c-card-bg)",
-  border: "1.5px solid var(--c-border)",
-  borderRadius: 8,
-  padding: "6px 12px",
-  cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--c-text-mid)",
-};
