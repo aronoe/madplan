@@ -22,6 +22,7 @@ export default function ShoppingProgress({
           <span>{bought} / {total} varer købt</span>
           {hasChecked && (
             <button
+              type="button"
               onClick={onClearChecked}
               className="bg-transparent border-none text-(--color-text-muted) cursor-pointer text-xs p-0"
             >

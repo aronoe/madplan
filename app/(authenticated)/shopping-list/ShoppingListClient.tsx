@@ -122,7 +122,7 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
           Henter indkøbsliste\u2026
         </div>
       ) : fetchError ? (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">
+        <div className="bg-(--color-danger-subtle) border border-(--color-danger) rounded-xl px-5 py-4 text-(--color-danger) text-sm">
           <strong>Fejl:</strong> {fetchError}
         </div>
       ) : ingredients.length === 0 ? (

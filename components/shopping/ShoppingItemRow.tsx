@@ -24,7 +24,11 @@ export default function ShoppingItemRow({
 }: ShoppingItemRowProps) {
   return (
     <div
+      role="checkbox"
+      aria-checked={checked}
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(); } }}
       className={cn(
         "flex items-center gap-3.5 px-4.5 py-3.25 cursor-pointer",
         !isLast && "border-b border-(--color-border)",

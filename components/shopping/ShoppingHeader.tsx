@@ -1,5 +1,3 @@
-"use client";
-
 import { ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/cn";
 
