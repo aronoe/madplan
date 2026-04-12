@@ -119,7 +119,6 @@ export async function addRecipe(
 
   if (error) throw error;
 }
-
 export async function updateRecipe(
   id: string,
   fields: Partial<{
@@ -130,12 +129,36 @@ export async function updateRecipe(
     category: string | null;
     servings: number | null;
     notes: string | null;
+    image_url: string | null; // ✅ tilføjet
   }>,
 ) {
   const supabase = createClient();
-  const { error } = await supabase.from("recipes").update(fields).eq("id", id);
 
-  if (error) throw error;
+  // 🔒 Fjern undefined værdier (meget vigtigt)
+  const cleanFields = Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined),
+  );
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .update(cleanFields)
+    .eq("id", id)
+    .select()
+    .single(); // ✅ vigtigt for stabil respons
+
+  if (error) {
+    console.error("[updateRecipe] Supabase error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      cleanFields,
+      id,
+    });
+    throw error;
+  }
+
+  return data;
 }
 
 export interface AggregatedIngredient {
@@ -237,7 +260,9 @@ export async function searchIngredients(
   // Get ingredient names used in this family's recipes
   const { data, error } = await supabase
     .from("ingredients")
-    .select("name, recipe_ingredients!inner(recipe_id, recipes!inner(family_id))")
+    .select(
+      "name, recipe_ingredients!inner(recipe_id, recipes!inner(family_id))",
+    )
     .eq("recipe_ingredients.recipes.family_id", familyId)
     .ilike("name", `%${query}%`)
     .limit(10);
