@@ -51,34 +51,34 @@
 }
 
 .dark {
-  /* Surfaces */
-  --color-bg:          #09090b;       /* zinc-950 */
-  --color-surface:     #18181b;       /* zinc-900 */
-  --color-surface-2:   #27272a;       /* zinc-800 */
-  --color-border:      #3f3f46;       /* zinc-700 */
+  /* Surfaces — not pure black, subtle layering */
+  --color-bg:          #111113;       /* near-black with slight warmth */
+  --color-surface:     #1c1c1f;       /* cards, panels */
+  --color-surface-2:   #28282c;       /* hover states, inputs */
+  --color-border:      #2e2e33;       /* softer than zinc-700 */
   --color-border-focus:#6ee7b7;       /* emerald-300 */
 
-  /* Text */
-  --color-text:        #fafafa;       /* zinc-50 */
-  --color-text-mid:    #d4d4d8;       /* zinc-300 */
-  --color-text-muted:  #a1a1aa;       /* zinc-400 */
+  /* Text — balanced, not harsh white */
+  --color-text:        #ececee;       /* slightly off-white */
+  --color-text-mid:    #b8b8bf;       /* secondary labels */
+  --color-text-muted:  #87878f;       /* placeholders, captions */
 
-  /* Accent */
-  --color-primary:     #10b981;
-  --color-primary-hover:#34d399;
-  --color-primary-subtle:#022c22;
-  --color-primary-text:#6ee7b7;
+  /* Accent — emerald-400 reads better on dark than 500 */
+  --color-primary:     #34d399;       /* emerald-400 */
+  --color-primary-hover:#6ee7b7;      /* emerald-300 for hover */
+  --color-primary-subtle:#0d2b1e;     /* subtle tinted surface */
+  --color-primary-text:#a7f3d0;       /* emerald-200 for colored text */
 
   /* States */
   --color-danger:      #f87171;
-  --color-danger-subtle:#450a0a;
-  --color-warning-subtle:#422006;
+  --color-danger-subtle:#380c0c;
+  --color-warning-subtle:#3b1a06;
   --color-warning-border:#854d0e;
 
   /* Nav */
-  --color-nav-bg:      #18181b;
-  --color-nav-shadow:  0 1px 0 0 #3f3f46;
-  --color-active-bg:   #022c22;
+  --color-nav-bg:      #1c1c1f;
+  --color-nav-shadow:  0 1px 0 0 #2e2e33;
+  --color-active-bg:   #0d2b1e;
 
   /* Legacy aliases */
   --c-page-bg:         var(--color-bg);
