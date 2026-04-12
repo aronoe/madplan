@@ -10,7 +10,7 @@ interface ShoppingHeaderProps {
 }
 
 const navBtnClass =
-  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-xs font-semibold text-(--color-text-mid) hover:bg-(--color-surface-2) transition-colors flex items-center gap-1";
+  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-sm font-medium text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) transition-colors flex items-center gap-1";
 
 export default function ShoppingHeader({
   weekLabel,

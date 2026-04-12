@@ -2,7 +2,9 @@
 
 import { Search } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { CATEGORIES } from "@/components/opskrifter/RecipeForm";
+import { CATEGORIES as RECIPE_CATEGORIES } from "@/components/opskrifter/RecipeForm";
+
+const CATEGORIES = ["Alle", ...RECIPE_CATEGORIES];
 
 interface RecipeFiltersProps {
   search: string;

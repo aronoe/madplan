@@ -59,13 +59,13 @@ function RecipeKort({
           .join(" "),
       }}
       className={cn(
-        "border border-(--color-primary-subtle) rounded-[10px] flex items-center gap-2 cursor-grab select-none transition-[box-shadow,transform] duration-150",
+        "border border-(--color-border) rounded-lg flex items-center gap-2 cursor-grab select-none transition-[box-shadow,transform] duration-150",
         compact ? "px-2.5 py-1.5" : "px-3 py-2",
         isDragging
-          ? "bg-(--color-primary-subtle) opacity-40 shadow-none"
+          ? "bg-(--color-surface) opacity-40 shadow-none"
           : hovered
-          ? "bg-(--color-surface) shadow-[0_4px_12px_rgba(0,0,0,.08)]"
-          : "bg-(--color-surface) shadow-[0_1px_4px_rgba(0,0,0,.06)]",
+          ? "bg-(--color-surface) shadow-md"
+          : "bg-(--color-surface) shadow-sm",
       )}
     >
       <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
@@ -117,14 +117,14 @@ function DagSlot({
         ref={setNodeRef}
         onClick={onSelect}
         className={cn(
-          "min-h-[80px] rounded-xl p-2 flex flex-col justify-center transition-[border-color,background] duration-150 relative cursor-pointer",
+          "min-h-20 rounded-xl p-2 flex flex-col justify-center transition-[border-color,background,box-shadow] duration-150 relative cursor-pointer",
           isSelected
-            ? "border-2 border-solid border-(--color-primary) bg-(--color-active-bg) shadow-[0_0_0_3px_rgba(76,175,130,.18)]"
+            ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle) shadow-sm"
             : isOver
-            ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle)"
+            ? "border-2 border-solid border-(--color-primary) bg-(--color-surface)"
             : meal
-            ? "border-2 border-solid border-(--color-primary-subtle) bg-(--color-surface) shadow-[0_1px_6px_rgba(0,0,0,.06)]"
-            : "border-2 border-dashed border-(--color-primary-subtle) bg-(--color-active-bg)",
+            ? "border border-solid border-(--color-border) bg-(--color-surface) shadow-sm"
+            : "border border-dashed border-(--color-border) bg-(--color-bg)",
         )}
       >
         {meal ? (
@@ -142,11 +142,11 @@ function DagSlot({
           <div
             className={cn(
               "flex flex-col items-center gap-1",
-              isSelected ? "text-(--color-primary)" : "text-(--color-border)",
+              isSelected ? "text-(--color-primary)" : "text-(--color-text-muted)",
             )}
           >
             <Plus size={16} />
-            <span className="text-[11px] font-semibold text-center">Tilføj ret</span>
+            <span className="text-[11px] font-medium text-center">Tilføj ret</span>
           </div>
         )}
       </div>
@@ -162,7 +162,7 @@ function DragOverlayKort({
   recipe: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes">;
 }) {
   return (
-    <div className="bg-(--color-surface) border-2 border-(--color-primary) rounded-[10px] px-3.5 py-2 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,.15)] cursor-grabbing text-sm font-semibold text-(--color-primary-text)">
+    <div className="bg-(--color-surface) border-2 border-(--color-primary) rounded-lg px-3.5 py-2 flex items-center gap-2 shadow-xl cursor-grabbing text-sm font-semibold text-(--color-text)">
       <span className="text-[20px]">{recipe.emoji}</span>
       {recipe.name}
       <span className="text-xs text-(--color-primary-hover) ml-1">
@@ -329,11 +329,11 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
       </div>
 
       {/* ── Summary bar ────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-(--color-primary-subtle) rounded-xl px-4 py-3 mb-5 flex items-center flex-wrap gap-4">
+      <div className="bg-(--color-surface) rounded-xl px-4 py-3 mb-5 flex items-center flex-wrap gap-4 shadow-sm">
         {/* Planned count */}
         <div className="flex items-center gap-1.5">
-          <UtensilsCrossed size={16} className="text-(--color-primary)" />
-          <span className="text-sm font-bold text-(--color-primary-text)">
+          <UtensilsCrossed size={15} className="text-(--color-primary)" />
+          <span className="text-sm font-semibold text-(--color-text)">
             {plannedCount} / 7 dage planlagt
           </span>
         </div>
@@ -341,9 +341,9 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
         {/* Ingredient count */}
         {ingredientCount !== null && (
           <div className="flex items-center gap-1.5">
-            <ShoppingCart size={16} className="text-(--color-text-mid)" />
-            <span className="text-sm font-semibold text-(--color-text-mid)">
-              {ingredientCount} varer på listen
+            <ShoppingCart size={15} className="text-(--color-text-muted)" />
+            <span className="text-sm text-(--color-text-muted)">
+              {ingredientCount} varer
             </span>
           </div>
         )}
@@ -351,26 +351,26 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Quick link to auto-planner — ghost */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-(--color-text-muted) hover:text-(--color-text) rounded-lg px-3 py-1.5 font-semibold text-sm no-underline whitespace-nowrap transition-colors"
+        >
+          <Sparkles size={14} /> Planlæg uge
+        </Link>
+
         {/* Shopping list CTA */}
         <Link
           href="/shopping-list"
-          className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-1.5 font-semibold text-sm no-underline whitespace-nowrap hover:bg-(--color-primary-hover) transition-colors"
         >
-          <ShoppingCart size={14} /> Se indkøbsliste
-        </Link>
-
-        {/* Quick link to auto-planner */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 bg-(--color-active-bg) text-(--color-primary-text) border border-(--color-primary-subtle) rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
-        >
-          <Sparkles size={14} /> Planlæg uge
+          <ShoppingCart size={14} /> Indkøbsliste
         </Link>
       </div>
 
       {/* ── Day grid ───────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="text-(--color-primary-hover) py-10 text-center">
+        <div className="text-(--color-text-muted) py-10 text-center text-sm">
           Henter madplan…
         </div>
       ) : loadError ? (
@@ -387,7 +387,7 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-7">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
             {Array.from({ length: 7 }, (_, i) => (
               <DagSlot
                 key={i}
@@ -401,9 +401,9 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
           </div>
           {/* Empty week guidance */}
           {plannedCount === 0 && (
-            <div className="text-center py-3 text-(--color-primary-hover) text-sm">
+            <div className="text-center py-3 text-(--color-text-muted) text-sm">
               Ingen retter planlagt denne uge.{" "}
-              <Link href="/" className="text-(--color-primary) font-bold">
+              <Link href="/" className="text-(--color-primary) font-semibold underline-offset-2 hover:underline">
                 Brug auto-planlæggeren →
               </Link>
             </div>
@@ -449,4 +449,4 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
 }
 
 const navBtnClass =
-  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-[13px] font-semibold text-(--color-text-mid) inline-flex items-center gap-1";
+  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-sm font-medium text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) inline-flex items-center gap-1 transition-colors";

@@ -30,21 +30,21 @@ export default function ShoppingItemRow({
       onClick={onToggle}
       onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(); } }}
       className={cn(
-        "flex items-center gap-3.5 px-4.5 py-3.25 cursor-pointer",
+        "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-(--color-surface-2) transition-colors",
         !isLast && "border-b border-(--color-border)",
       )}
     >
       {/* Checkbox */}
       {checked ? (
-        <div className="w-5.5 h-5.5 rounded-md border-2 border-(--color-primary) bg-(--color-primary) shrink-0 flex items-center justify-center text-white">
-          <Check size={12} />
+        <div className="w-5 h-5 rounded border-2 border-(--color-primary) bg-(--color-primary) shrink-0 flex items-center justify-center text-white">
+          <Check size={11} />
         </div>
       ) : isOffer ? (
-        <div className="w-5.5 h-5.5 rounded-md border-2 border-(--color-primary) shrink-0 bg-(--color-primary-subtle) flex items-center justify-center text-(--color-primary)">
-          <Tag size={12} />
+        <div className="w-5 h-5 rounded border-2 border-(--color-primary) shrink-0 bg-(--color-primary-subtle) flex items-center justify-center text-(--color-primary)">
+          <Tag size={11} />
         </div>
       ) : (
-        <div className="w-5.5 h-5.5 rounded-md border-2 border-(--color-border) shrink-0 bg-(--color-bg)" />
+        <div className="w-5 h-5 rounded border-2 border-(--color-border) shrink-0 bg-(--color-bg)" />
       )}
 
       {/* Name */}

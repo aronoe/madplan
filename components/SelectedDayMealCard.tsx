@@ -43,14 +43,14 @@ export default function SelectedDayMealCard({
   const recipe = fullRecipe ?? meal;
 
   return (
-    <div className="bg-(--color-bg) border border-(--color-primary-subtle) rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,.08)]">
+    <div className="bg-(--color-bg) border border-(--color-border) rounded-2xl overflow-hidden shadow-sm">
       {/* Day label strip */}
-      <div className="bg-(--color-primary) px-5 py-2.5 flex items-center justify-between">
-        <span className="text-[13px] font-bold text-white uppercase tracking-wide">
+      <div className="bg-(--color-surface) border-b border-(--color-border) px-5 py-3 flex items-center justify-between">
+        <span className="text-xs font-bold text-(--color-primary) uppercase tracking-widest">
           {DAGE[dayIndex]}
         </span>
         {meal && (
-          <span className="text-xs text-white/70">
+          <span className="text-xs text-(--color-text-muted)">
             {meal.time_minutes} min
           </span>
         )}
@@ -87,25 +87,25 @@ export default function SelectedDayMealCard({
 
           {/* Ingredients */}
           <div className="mb-5">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-(--color-primary-hover) mb-2.5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3">
               Ingredienser
             </div>
 
             {loadingIng ? (
-              <div className="text-[13px] text-(--color-border) italic">Henter…</div>
+              <div className="text-sm text-(--color-text-muted) italic">Henter…</div>
             ) : ingredients.length === 0 ? (
-              <div className="text-[13px] text-(--color-border) italic">
+              <div className="text-sm text-(--color-text-muted) italic">
                 Ingen ingredienser tilføjet endnu.
               </div>
             ) : (
-              <div className="grid gap-x-4 gap-y-0" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4">
                 {ingredients.map((ing) => (
                   <div
                     key={ing.id}
-                    className="flex justify-between items-center py-1.5 border-b border-(--color-active-bg) text-[13px]"
+                    className="flex justify-between items-center py-1.5 border-b border-(--color-border) text-sm"
                   >
-                    <span className="text-(--color-text) font-medium">{ing.name}</span>
-                    <span className="text-(--color-primary-hover) font-semibold whitespace-nowrap ml-2">
+                    <span className="text-(--color-text)">{ing.name}</span>
+                    <span className="text-(--color-text-muted) whitespace-nowrap ml-2">
                       {ing.amount % 1 === 0 ? ing.amount : ing.amount.toFixed(1)} {ing.unit}
                     </span>
                   </div>
@@ -132,12 +132,12 @@ export default function SelectedDayMealCard({
         </div>
       ) : (
         /* Empty state */
-        <div className="px-6 py-8 flex flex-col items-center gap-3">
-          <PackageOpen size={36} className="text-(--color-primary-hover)" />
-          <div className="text-[15px] text-(--color-primary-hover) font-semibold">
+        <div className="px-6 py-10 flex flex-col items-center gap-3">
+          <PackageOpen size={32} className="text-(--color-text-muted)" />
+          <div className="text-sm text-(--color-text-muted)">
             Ingen ret planlagt denne dag
           </div>
-          <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none")}>
+          <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none mt-1")}>
             <Plus size={14} /> Tilføj ret
           </button>
         </div>
@@ -155,4 +155,4 @@ function MetaChip({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 const actionBtnClass =
-  "inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 font-bold text-[13px] cursor-pointer whitespace-nowrap";
+  "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 font-semibold text-sm cursor-pointer whitespace-nowrap transition-colors";

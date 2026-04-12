@@ -5,7 +5,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import RecipeIngredientEditor from "./RecipeIngredientEditor";
-import { Carrot, BookOpen } from "lucide-react";
+import { Carrot, BookOpen, Clock, ChevronUp, ChevronDown } from "lucide-react";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -26,22 +26,23 @@ export default function RecipeCard({
     <Card active={expanded}>
       {/* Header row */}
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{r.emoji}</span>
+        <span className="text-2xl shrink-0">{r.emoji}</span>
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-(--color-text) text-sm">
+          <div className="font-semibold text-(--color-text) text-[15px] truncate">
             {r.name}
           </div>
-          <div className="flex gap-2 mt-1 flex-wrap">
-            <Badge variant="meta">⏱ {r.time_minutes} min</Badge>
+          <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
+            <Badge variant="meta"><Clock size={11} className="inline-block mr-0.5" />{r.time_minutes} min</Badge>
             {r.tags?.map((tag) => <Badge key={tag}>{tag}</Badge>)}
           </div>
         </div>
 
-        <Button variant="secondary" size="sm" onClick={onToggleExpand} title={expanded ? "Skjul ingredienser" : "Vis ingredienser"}>
-          <Carrot size={14} /> Ingredienser {expanded ? "▲" : "▼"}
+        <Button variant="ghost" size="sm" onClick={onToggleExpand} title={expanded ? "Skjul ingredienser" : "Vis ingredienser"}>
+          <Carrot size={14} />
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </Button>
-        <Button variant="secondary" size="sm" onClick={onView}>
-          <BookOpen size={14} /> Vis
+        <Button variant="ghost" size="sm" onClick={onView}>
+          <BookOpen size={14} />
         </Button>
         <Button variant="danger" size="sm" onClick={onDelete}>
           Slet
