@@ -114,16 +114,16 @@ export default function SelectedDayMealCard({
               {loadingIng ? (
                 <p className="text-sm text-(--color-text-muted) italic m-0">Henter…</p>
               ) : (
-                <div className="flex flex-wrap gap-x-5 gap-y-1">
+                <ul className="list-none p-0 m-0 flex flex-col gap-0">
                   {ingredients.map((ing) => (
-                    <span key={ing.id} className="text-sm text-(--color-text)">
-                      {ing.name}
-                      <span className="text-(--color-text-muted) ml-1">
+                    <li key={ing.id} className="flex justify-between text-sm py-1 border-b border-(--color-border) last:border-0">
+                      <span className="text-(--color-text)">{ing.name}</span>
+                      <span className="text-(--color-text-muted)">
                         {formatAmount(ing.amount)} {ing.unit}
                       </span>
-                    </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           )}

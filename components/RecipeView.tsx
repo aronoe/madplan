@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getIngredientsForRecipe, getRecipeSteps } from "@/lib/queries";
+import { getIngredientsForRecipe, getRecipeSteps, updateRecipe } from "@/lib/queries";
 import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
 import RecipeImage from "@/components/ui/RecipeImage";
 import RecipeIngredientEditor from "@/components/opskrifter/RecipeIngredientEditor";
@@ -14,21 +14,59 @@ import {
   Trash2,
   X,
   CheckCircle,
+  ImageOff,
 } from "lucide-react";
 
 type Props = {
   recipe: Recipe;
   onClose: () => void;
   onDelete: (id: string) => void;
+  onImageChange?: (id: string, url: string | null) => void;
 };
 
-export default function RecipeView({ recipe, onClose, onDelete }: Props) {
+export default function RecipeView({ recipe, onClose, onDelete, onImageChange }: Props) {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [steps, setSteps] = useState<RecipeStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [imageUrl, setImageUrl] = useState(recipe.image_url ?? "");
+  const [imageSaving, setImageSaving] = useState(false);
+  const [imageError, setImageError] = useState("");
+
+  useEffect(() => {
+    setImageUrl(recipe.image_url ?? "");
+    setImageError("");
+  }, [recipe.id, recipe.image_url]);
+
+  function isValidUrl(s: string) {
+    try {
+      const u = new URL(s);
+      return u.protocol === "https:" || u.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveImage(value: string | null) {
+    const url = value?.trim() ? value.trim() : null;
+    if (url && !isValidUrl(url)) {
+      setImageError("Indtast en gyldig URL (skal starte med https://)");
+      return;
+    }
+    setImageError("");
+    setImageSaving(true);
+    try {
+      await updateRecipe(recipe.id, { image_url: url }, recipe.family_id);
+      onImageChange?.(recipe.id, url);
+    } catch (err) {
+      console.error("[saveImage] failed:", err);
+      setImageError("Kunne ikke gemme billedet. Prøv igen.");
+    } finally {
+      setImageSaving(false);
+    }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -60,9 +98,9 @@ export default function RecipeView({ recipe, onClose, onDelete }: Props) {
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-lg bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[90vh] z-200 flex flex-col">
 
         {/* Hero image — only when available */}
-        {recipe.image_url && (
+        {(imageUrl || recipe.image_url) && (
           <RecipeImage
-            src={recipe.image_url}
+            src={imageUrl || recipe.image_url}
             alt={recipe.name}
             className="w-full aspect-video shrink-0 rounded-none"
           />
@@ -128,12 +166,68 @@ export default function RecipeView({ recipe, onClose, onDelete }: Props) {
         ) : (
           <div className="px-6 pt-5 pb-6 flex flex-col gap-6">
 
+            {/* Image editing — only in edit mode */}
+            {editing && (
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3">
+                  Billede
+                </h3>
+                <div className="flex gap-3 items-start">
+                  <div className="w-24 shrink-0 rounded-lg overflow-hidden">
+                    <RecipeImage
+                      src={imageUrl || null}
+                      alt={recipe.name}
+                      emoji={recipe.emoji}
+                      className="aspect-4/3"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <input
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => { setImageUrl(e.target.value); setImageError(""); }}
+                      placeholder="https://…"
+                      className={cn(
+                        "w-full text-sm rounded-lg border bg-(--color-bg) text-(--color-text) px-3 py-1.5 focus:outline-none focus:border-(--color-border-focus)",
+                        imageError ? "border-(--color-danger)" : "border-(--color-border)",
+                      )}
+                    />
+                    {imageError && (
+                      <p className="text-xs text-(--color-danger) m-0">{imageError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={imageSaving}
+                        onClick={() => saveImage(imageUrl)}
+                        className="text-sm font-medium bg-(--color-primary) text-white rounded-lg px-3 py-1.5 cursor-pointer hover:bg-(--color-primary-hover) transition-colors disabled:opacity-50"
+                      >
+                        {imageSaving ? "Gemmer…" : "Gem"}
+                      </button>
+                      {(recipe.image_url || imageUrl) && (
+                        <button
+                          type="button"
+                          disabled={imageSaving}
+                          onClick={() => { setImageUrl(""); setImageError(""); saveImage(null); }}
+                          className="inline-flex items-center gap-1 text-sm text-(--color-danger) hover:bg-(--color-danger-subtle) rounded-lg px-3 py-1.5 cursor-pointer transition-colors disabled:opacity-50"
+                        >
+                          <ImageOff size={13} /> Fjern
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Ingredients */}
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3">
                 Ingredienser
               </h3>
-              {ingredients.length === 0 && !editing ? (
+              {editing ? (
+                <RecipeIngredientEditor recipeId={recipe.id} />
+              ) : ingredients.length === 0 ? (
                 <p className="text-sm text-(--color-text-muted) italic">
                   Ingen ingredienser tilføjet endnu.
                 </p>
@@ -152,9 +246,6 @@ export default function RecipeView({ recipe, onClose, onDelete }: Props) {
                   ))}
                 </ul>
               )}
-
-              {/* Inline ingredient editor when editing */}
-              {editing && <RecipeIngredientEditor recipeId={recipe.id} />}
             </section>
 
             {/* Steps */}

@@ -36,7 +36,7 @@ export default function OpskrifterKlient({
 
   const filtered = recipes.filter((r) => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = activeCategory === "Alle" || r.tags?.includes(activeCategory);
+    const matchCategory = activeCategory === "Alle" || r.category === activeCategory;
     return matchSearch && matchCategory;
   });
 
@@ -147,6 +147,14 @@ export default function OpskrifterKlient({
           onDelete={(id) => {
             handleDelete(id);
             setViewingRecipe(null);
+          }}
+          onImageChange={(id, url) => {
+            setRecipes((prev) =>
+              prev.map((r) => (r.id === id ? { ...r, image_url: url } : r)),
+            );
+            setViewingRecipe((prev) =>
+              prev && prev.id === id ? { ...prev, image_url: url } : prev,
+            );
           }}
         />
       )}

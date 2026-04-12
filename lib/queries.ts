@@ -130,12 +130,29 @@ export async function updateRecipe(
     category: string | null;
     servings: number | null;
     notes: string | null;
+    image_url: string | null;
   }>,
+  familyId?: string,
 ) {
-  const supabase = createClient();
-  const { error } = await supabase.from("recipes").update(fields).eq("id", id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cleanFields: any = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== undefined),
+  );
 
-  if (error) throw error;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("recipes")
+    .update(cleanFields)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[updateRecipe] error:", error.message, error.details ?? "", { cleanFields, id });
+    throw error;
+  }
+
+  return data;
 }
 
 export interface AggregatedIngredient {
