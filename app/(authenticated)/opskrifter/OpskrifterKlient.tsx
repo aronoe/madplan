@@ -8,6 +8,7 @@ import RecipeForm, { DEFAULT_FORM, type RecipeFormValues } from "@/components/op
 import RecipeFilters from "@/components/opskrifter/RecipeFilters";
 import RecipeCard from "@/components/opskrifter/RecipeCard";
 import SectionHeader from "@/components/ui/SectionHeader";
+import { Plus, ChevronUp } from "lucide-react";
 
 export default function OpskrifterKlient({
   familyId,
@@ -23,7 +24,7 @@ export default function OpskrifterKlient({
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Alle");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [viewingRecipe, setViewingRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function OpskrifterKlient({
       });
       setRecipes(((await getRecipes(familyId)) as Recipe[]) ?? []);
       setForm(DEFAULT_FORM);
+      setShowForm(false);
     } catch {
       setError("Kunne ikke gemme opskriften. Prøv igen.");
     } finally {
@@ -65,7 +67,6 @@ export default function OpskrifterKlient({
 
   async function handleDelete(id: string) {
     setRecipes((prev) => prev.filter((r) => r.id !== id));
-    if (expandedId === id) setExpandedId(null);
     try {
       await deleteRecipe(id);
     } catch {
@@ -74,64 +75,80 @@ export default function OpskrifterKlient({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4 mb-6">
+    <div className="space-y-6">
+
+      {/* Page header */}
+      <div className="flex items-center justify-between gap-4">
         <SectionHeader>Opskrifter</SectionHeader>
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
+        >
+          {showForm ? <ChevronUp size={15} /> : <Plus size={15} />}
+          {showForm ? "Luk" : "Tilføj opskrift"}
+        </button>
       </div>
 
-      <RecipeForm
-        form={form}
-        saving={saving}
-        error={error}
-        onChange={setForm}
-        onSubmit={handleSubmit}
-      />
+      {/* Collapsible add-recipe form */}
+      {showForm && (
+        <RecipeForm
+          form={form}
+          saving={saving}
+          error={error}
+          onChange={setForm}
+          onSubmit={handleSubmit}
+        />
+      )}
 
-      <RecipeFilters
-        search={search}
-        activeCategory={activeCategory}
-        onSearchChange={setSearch}
-        onCategoryChange={setActiveCategory}
-      />
+      {/* Search + filters */}
+      <div>
+        <RecipeFilters
+          search={search}
+          activeCategory={activeCategory}
+          onSearchChange={setSearch}
+          onCategoryChange={setActiveCategory}
+        />
+      </div>
 
+      {/* Recipe grid */}
       {loading ? (
-        <div className="text-(--color-text-muted) py-5">Henter opskrifter…</div>
+        <div className="text-(--color-text-muted) text-sm py-5">Henter opskrifter…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-(--color-text-muted) text-sm">
+        <div className="text-(--color-text-muted) text-sm py-5">
           {recipes.length === 0
-            ? "Ingen opskrifter endnu. Tilføj din første ovenfor."
+            ? "Ingen opskrifter endnu — klik \"Tilføj opskrift\" for at komme i gang."
             : "Ingen opskrifter matcher din søgning."}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((r) => (
-            <RecipeCard
-              key={r.id}
-              recipe={r}
-              expanded={expandedId === r.id}
-              onToggleExpand={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
-              onView={() => setViewingRecipe(r)}
-              onDelete={() => handleDelete(r.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            {filtered.map((r) => (
+              <RecipeCard
+                key={r.id}
+                recipe={r}
+                onClick={() => setViewingRecipe(r)}
+              />
+            ))}
+          </div>
+          {recipes.length > 0 && (
+            <p className="text-(--color-text-muted) text-xs mt-1">
+              Viser {filtered.length} af {recipes.length} opskrifter
+            </p>
+          )}
+        </>
       )}
 
+      {/* Recipe detail modal */}
       {viewingRecipe && (
         <RecipeView
           recipe={viewingRecipe}
           onClose={() => setViewingRecipe(null)}
-          onEdit={() => {
-            setExpandedId(viewingRecipe.id);
+          onDelete={(id) => {
+            handleDelete(id);
             setViewingRecipe(null);
           }}
         />
-      )}
-
-      {!loading && recipes.length > 0 && (
-        <div className="text-(--color-text-muted) text-xs mt-4">
-          Viser {filtered.length} af {recipes.length} opskrifter
-        </div>
       )}
     </div>
   );
