@@ -48,15 +48,22 @@ function RecipeKort({
       {...attributes}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined }}
+      style={{
+        transform: [
+          transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : null,
+          !isDragging && hovered ? "scale(1.02)" : "scale(1)",
+        ]
+          .filter(Boolean)
+          .join(" "),
+      }}
       className={cn(
         "border border-(--color-primary-subtle) rounded-[10px] flex items-center gap-2 cursor-grab select-none transition-[box-shadow,transform] duration-150",
         compact ? "px-2.5 py-1.5" : "px-3 py-2",
         isDragging
-          ? "bg-(--color-primary-subtle) opacity-40 shadow-none scale-100"
+          ? "bg-(--color-primary-subtle) opacity-40 shadow-none"
           : hovered
-          ? "bg-white shadow-[0_4px_12px_rgba(0,80,40,.13)] scale-[1.02]"
-          : "bg-white shadow-[0_1px_4px_rgba(0,80,40,.06)] scale-100",
+          ? "bg-white shadow-[0_4px_12px_rgba(0,80,40,.13)]"
+          : "bg-white shadow-[0_1px_4px_rgba(0,80,40,.06)]",
       )}
     >
       <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>

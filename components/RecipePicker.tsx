@@ -45,7 +45,7 @@ export default function RecipePicker({
       />
 
       {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-md bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col z-301">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-md bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[85vh] flex flex-col z-300">
         {/* Header */}
         <div className="px-5 pt-4.5 pb-3.5 border-b border-(--color-border) flex items-center justify-between shrink-0">
           <span className="font-extrabold text-base text-(--color-text)">

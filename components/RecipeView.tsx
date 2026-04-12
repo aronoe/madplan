@@ -38,7 +38,7 @@ export default function RecipeView({ recipe, onClose, onEdit }: Props) {
       />
 
       {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-lg bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto z-201 flex flex-col">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-lg bg-(--color-surface) rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[90vh] z-200 flex flex-col">
         {/* Header */}
         <div className="px-6 pt-6 pb-0 flex justify-between items-start gap-3">
           <div>
