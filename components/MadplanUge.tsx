@@ -122,7 +122,7 @@ function DagSlot({
             ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle)"
             : meal
             ? "border-2 border-solid border-(--color-primary-subtle) bg-white shadow-[0_1px_6px_rgba(0,80,40,.07)]"
-            : "border-2 border-dashed border-(--color-primary-subtle) bg-[#f8fdfb]",
+            : "border-2 border-dashed border-(--color-primary-subtle) bg-(--color-active-bg)",
         )}
       >
         {meal ? (
@@ -371,7 +371,7 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
           Henter madplan…
         </div>
       ) : loadError ? (
-        <div className="bg-(--color-danger-subtle) border border-[#f5c6c6] rounded-xl px-6 py-5 text-center">
+        <div className="bg-(--color-danger-subtle) border border-(--color-danger) rounded-xl px-6 py-5 text-center">
           <div className="text-(--color-danger) font-semibold mb-3">
             ⚠️ {loadError}
           </div>
