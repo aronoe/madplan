@@ -22,6 +22,8 @@ import {
 import type { Recipe, WeekMeals } from "@/lib/types";
 import RecipePicker from "@/components/RecipePicker";
 import SelectedDayMealCard from "@/components/SelectedDayMealCard";
+import { cn } from "@/lib/cn";
+import { UtensilsCrossed, ShoppingCart, Sparkles, X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
@@ -36,7 +38,7 @@ function RecipeKort({
   dragId: string;
   compact?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: dragId });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: dragId });
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -46,38 +48,28 @@ function RecipeKort({
       {...attributes}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        background: isDragging ? "#d4eddf" : "white",
-        border: "1.5px solid #d4eddf",
-        borderRadius: 10,
-        padding: compact ? "6px 10px" : "8px 12px",
-        cursor: "grab",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        opacity: isDragging ? 0.4 : 1,
-        userSelect: "none",
-        transition: "box-shadow 0.15s, transform 0.15s",
-        boxShadow: isDragging ? "none" : hovered ? "0 4px 12px rgba(0,80,40,.13)" : "0 1px 4px rgba(0,80,40,.06)",
-        transform: !isDragging && hovered ? "scale(1.02)" : "scale(1)",
-        minWidth: 0,
-      }}
+      style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined }}
+      className={cn(
+        "border border-(--color-primary-subtle) rounded-[10px] flex items-center gap-2 cursor-grab select-none transition-[box-shadow,transform] duration-150",
+        compact ? "px-2.5 py-1.5" : "px-3 py-2",
+        isDragging
+          ? "bg-(--color-primary-subtle) opacity-40 shadow-none scale-100"
+          : hovered
+          ? "bg-white shadow-[0_4px_12px_rgba(0,80,40,.13)] scale-[1.02]"
+          : "bg-white shadow-[0_1px_4px_rgba(0,80,40,.06)] scale-100",
+      )}
     >
-      <span style={{ fontSize: compact ? 18 : 20 }}>{recipe.emoji}</span>
+      <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
       <span
-        style={{
-          fontSize: compact ? 13 : 14,
-          fontWeight: 600,
-          color: "#1a5c35",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        className={cn(
+          "font-semibold text-(--color-primary-text) overflow-hidden text-ellipsis whitespace-nowrap",
+          compact ? "text-[13px]" : "text-[14px]",
+        )}
       >
         {recipe.name}
       </span>
       {!compact && (
-        <span style={{ fontSize: 12, color: "#7aad8a", marginLeft: "auto", flexShrink: 0 }}>
+        <span className="text-xs text-(--color-primary-hover) ml-auto shrink-0">
           {recipe.time_minutes} min
         </span>
       )}
@@ -102,87 +94,50 @@ function DagSlot({
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `slot-${dayIndex}` });
 
-  // Derive border: selected > drop-over > meal-filled > empty
-  const borderColor = isSelected ? "#4caf82" : isOver ? "#4caf82" : meal ? "#d4eddf" : "#d4eddf";
-  const borderStyle = isSelected || meal ? "solid" : "dashed";
-  const borderWidth = isSelected ? 2 : 2;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+    <div className="flex flex-col gap-1.5 min-w-0">
       <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: isSelected ? "#4caf82" : "#5a7a66",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          transition: "color 0.15s",
-        }}
+        className={cn(
+          "text-[12px] font-bold uppercase tracking-wide transition-colors duration-150",
+          isSelected ? "text-(--color-primary)" : "text-(--color-text-mid)",
+        )}
       >
         {DAGE[dayIndex]}
       </div>
       <div
         ref={setNodeRef}
         onClick={onSelect}
-        style={{
-          minHeight: 80,
-          borderRadius: 12,
-          border: `${borderWidth}px ${borderStyle} ${borderColor}`,
-          background: isOver ? "#e8f8ef" : isSelected ? "#f0faf4" : meal ? "white" : "#f8fdfb",
-          padding: 8,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          transition: "border-color 0.15s, background 0.15s",
-          position: "relative",
-          boxShadow: isSelected
-            ? "0 0 0 3px rgba(76,175,130,.18)"
+        className={cn(
+          "min-h-[80px] rounded-xl p-2 flex flex-col justify-center transition-[border-color,background] duration-150 relative cursor-pointer",
+          isSelected
+            ? "border-2 border-solid border-(--color-primary) bg-(--color-active-bg) shadow-[0_0_0_3px_rgba(76,175,130,.18)]"
+            : isOver
+            ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle)"
             : meal
-            ? "0 1px 6px rgba(0,80,40,.07)"
-            : "none",
-          cursor: "pointer",
-        }}
+            ? "border-2 border-solid border-(--color-primary-subtle) bg-white shadow-[0_1px_6px_rgba(0,80,40,.07)]"
+            : "border-2 border-dashed border-(--color-primary-subtle) bg-[#f8fdfb]",
+        )}
       >
         {meal ? (
           <>
             <RecipeKort recipe={meal} dragId={`day-${dayIndex}`} compact />
             <button
               onClick={(e) => { e.stopPropagation(); onClear(); }}
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                border: "none",
-                background: "#f0faf4",
-                color: "#7aad8a",
-                cursor: "pointer",
-                fontSize: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                lineHeight: 1,
-                padding: 0,
-              }}
+              className="absolute top-1 right-1 w-5 h-5 rounded-full border-none bg-(--color-active-bg) text-(--color-primary-hover) cursor-pointer text-xs flex items-center justify-center leading-none p-0"
               title="Fjern ret"
             >
-              ×
+              <X size={14} />
             </button>
           </>
         ) : (
           <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-              color: isSelected ? "#4caf82" : "#b0cfba",
-            }}
+            className={cn(
+              "flex flex-col items-center gap-1",
+              isSelected ? "text-(--color-primary)" : "text-(--color-border)",
+            )}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>＋</span>
-            <span style={{ fontSize: 11, fontWeight: 600, textAlign: "center" }}>Tilføj ret</span>
+            <Plus size={16} />
+            <span className="text-[11px] font-semibold text-center">Tilføj ret</span>
           </div>
         )}
       </div>
@@ -198,25 +153,10 @@ function DragOverlayKort({
   recipe: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes">;
 }) {
   return (
-    <div
-      style={{
-        background: "white",
-        border: "2px solid #4caf82",
-        borderRadius: 10,
-        padding: "8px 14px",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        boxShadow: "0 8px 24px rgba(0,80,40,.18)",
-        cursor: "grabbing",
-        fontSize: 14,
-        fontWeight: 600,
-        color: "#1a5c35",
-      }}
-    >
-      <span style={{ fontSize: 20 }}>{recipe.emoji}</span>
+    <div className="bg-white border-2 border-(--color-primary) rounded-[10px] px-3.5 py-2 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,80,40,.18)] cursor-grabbing text-sm font-semibold text-(--color-primary-text)">
+      <span className="text-[20px]">{recipe.emoji}</span>
       {recipe.name}
-      <span style={{ fontSize: 12, color: "#7aad8a", marginLeft: 4 }}>
+      <span className="text-xs text-(--color-primary-hover) ml-1">
         {recipe.time_minutes} min
       </span>
     </div>
@@ -356,27 +296,22 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
-        <h1 style={{ color: "#1a5c35", fontSize: 26, fontWeight: 800, margin: 0 }}>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h1 className="text-(--color-primary-text) text-[26px] font-extrabold m-0">
           Ugens aftensmad
         </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={() => setWeekOffset((o) => o - 1)} style={navBtnStyle}>← Forrige</button>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#5a7a66", minWidth: 140, textAlign: "center" }}>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setWeekOffset((o) => o - 1)} className={navBtnClass}>
+            <ChevronLeft size={18} /> Forrige
+          </button>
+          <span className="text-sm font-semibold text-(--color-text-mid) min-w-[140px] text-center">
             {weekLabel}
           </span>
-          <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}>Næste →</button>
+          <button onClick={() => setWeekOffset((o) => o + 1)} className={navBtnClass}>
+            Næste <ChevronRight size={18} />
+          </button>
           {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} style={{ ...navBtnStyle, color: "#4caf82" }}>
+            <button onClick={() => setWeekOffset(0)} className={cn(navBtnClass, "text-(--color-primary)")}>
               I dag
             </button>
           )}
@@ -384,126 +319,65 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
       </div>
 
       {/* ── Summary bar ────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          background: "white",
-          border: "1.5px solid #d4eddf",
-          borderRadius: 12,
-          padding: "12px 16px",
-          marginBottom: 20,
-          display: "flex",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 16,
-        }}
-      >
+      <div className="bg-white border border-(--color-primary-subtle) rounded-xl px-4 py-3 mb-5 flex items-center flex-wrap gap-4">
         {/* Planned count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 18 }}>🍽️</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#1a5c35" }}>
+        <div className="flex items-center gap-1.5">
+          <UtensilsCrossed size={16} className="text-(--color-primary)" />
+          <span className="text-sm font-bold text-(--color-primary-text)">
             {plannedCount} / 7 dage planlagt
           </span>
         </div>
 
         {/* Ingredient count */}
         {ingredientCount !== null && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 18 }}>🛒</span>
-            <span style={{ fontSize: 14, color: "#5a7a66", fontWeight: 600 }}>
+          <div className="flex items-center gap-1.5">
+            <ShoppingCart size={16} className="text-(--color-text-mid)" />
+            <span className="text-sm font-semibold text-(--color-text-mid)">
               {ingredientCount} varer på listen
             </span>
           </div>
         )}
 
         {/* Spacer */}
-        <div style={{ flex: 1 }} />
+        <div className="flex-1" />
 
         {/* Shopping list CTA */}
         <a
           href="/shopping-list"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "#4caf82",
-            color: "white",
-            borderRadius: 8,
-            padding: "7px 14px",
-            fontWeight: 700,
-            fontSize: 13,
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
+          className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
         >
-          🛒 Se indkøbsliste
+          <ShoppingCart size={14} /> Se indkøbsliste
         </a>
 
         {/* Quick link to auto-planner */}
         <a
           href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "var(--c-active-bg, #e8f8ef)",
-            color: "#1a5c35",
-            border: "1.5px solid #d4eddf",
-            borderRadius: 8,
-            padding: "7px 14px",
-            fontWeight: 700,
-            fontSize: 13,
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
+          className="inline-flex items-center gap-1.5 bg-(--color-active-bg) text-(--color-primary-text) border border-(--color-primary-subtle) rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
         >
-          ✨ Planlæg uge
+          <Sparkles size={14} /> Planlæg uge
         </a>
       </div>
 
       {/* ── Day grid ───────────────────────────────────────────────────────── */}
       {loading ? (
-        <div style={{ color: "#7aad8a", padding: "40px 0", textAlign: "center" }}>
+        <div className="text-(--color-primary-hover) py-10 text-center">
           Henter madplan…
         </div>
       ) : loadError ? (
-        <div
-          style={{
-            background: "#fff0f0",
-            border: "1.5px solid #f5c6c6",
-            borderRadius: 12,
-            padding: "20px 24px",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ color: "#c0392b", fontWeight: 600, marginBottom: 12 }}>
+        <div className="bg-(--color-danger-subtle) border border-[#f5c6c6] rounded-xl px-6 py-5 text-center">
+          <div className="text-(--color-danger) font-semibold mb-3">
             ⚠️ {loadError}
           </div>
           <button
             onClick={() => setLoadKey((k) => k + 1)}
-            style={{
-              background: "#4caf82",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              padding: "8px 18px",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontSize: 13,
-            }}
+            className="bg-(--color-primary) text-white border-none rounded-lg px-4 py-2 font-bold cursor-pointer text-[13px]"
           >
             Prøv igen
           </button>
         </div>
       ) : (
         <>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: 10,
-              marginBottom: 28,
-            }}
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-7">
             {Array.from({ length: 7 }, (_, i) => (
               <DagSlot
                 key={i}
@@ -517,16 +391,9 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
           </div>
           {/* Empty week guidance */}
           {plannedCount === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "12px 0 8px",
-                color: "#7aad8a",
-                fontSize: 14,
-              }}
-            >
+            <div className="text-center py-3 text-(--color-primary-hover) text-sm">
               Ingen retter planlagt denne uge.{" "}
-              <a href="/" style={{ color: "#4caf82", fontWeight: 700 }}>
+              <a href="/" className="text-(--color-primary) font-bold">
                 Brug auto-planlæggeren →
               </a>
             </div>
@@ -571,13 +438,5 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
   );
 }
 
-const navBtnStyle: React.CSSProperties = {
-  background: "white",
-  border: "1.5px solid #d4eddf",
-  borderRadius: 8,
-  padding: "6px 12px",
-  cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#5a7a66",
-};
+const navBtnClass =
+  "bg-white border border-(--color-primary-subtle) rounded-lg px-3 py-1.5 cursor-pointer text-[13px] font-semibold text-(--color-text-mid) inline-flex items-center gap-1";
