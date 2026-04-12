@@ -9,7 +9,7 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<Variant, string> = {
-  tag:   "bg-(--color-tag-bg) text-(--color-tag-text)",
+  tag:   "bg-(--color-primary-subtle) text-(--color-primary-text)",
   offer: "bg-(--color-primary-subtle) text-(--color-primary-text)",
   meta:  "bg-(--color-surface-2) text-(--color-text-muted)",
 };

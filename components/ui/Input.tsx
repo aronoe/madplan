@@ -1,3 +1,6 @@
+"use client";
+
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 import type { InputHTMLAttributes } from "react";
 
@@ -8,15 +11,18 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export default function Input({ label, compact = false, error, className, id, ...props }: InputProps) {
+  const generatedId = useId();
+  const resolvedId = id ?? (label ? generatedId : undefined);
+
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">
+        <label htmlFor={resolvedId} className="text-xs font-semibold uppercase tracking-wide text-(--color-text-muted)">
           {label}
         </label>
       )}
       <input
-        id={id}
+        id={resolvedId}
         {...props}
         className={cn(
           "w-full rounded-lg border bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-muted)",
