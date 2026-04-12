@@ -4,15 +4,9 @@ import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { Search, X } from "lucide-react";
+import { CATEGORIES as RECIPE_CATEGORIES } from "@/components/opskrifter/RecipeForm";
 
-const CATEGORIES = [
-  "Alle",
-  "Dansk klassisk",
-  "Italiensk inspireret",
-  "Internationalt mix",
-  "Supper og gryder",
-  "Grill og ovn",
-];
+const CATEGORIES = ["Alle", ...RECIPE_CATEGORIES];
 
 type Props = {
   recipes: Recipe[];

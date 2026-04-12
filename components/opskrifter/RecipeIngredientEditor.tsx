@@ -99,8 +99,8 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
                 <Input compact value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="flex-1" placeholder="Navn" />
                 <Input compact type="number" min={0} step="any" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))} className="w-17.5" />
                 <Input compact value={editForm.unit} onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))} className="w-17.5" placeholder="Enhed" />
-                <button onClick={() => handleSaveEdit(ing.id)} className={iconBtnClass} title="Gem" aria-label="Gem"><Check size={12} /></button>
-                <button onClick={() => setEditId(null)} className={iconBtnClass} title="Annuller" aria-label="Annuller"><X size={12} /></button>
+                <button type="button" onClick={() => handleSaveEdit(ing.id)} className={iconBtnClass} title="Gem" aria-label="Gem"><Check size={12} /></button>
+                <button type="button" onClick={() => setEditId(null)} className={iconBtnClass} title="Annuller" aria-label="Annuller"><X size={12} /></button>
               </div>
             ) : (
               <div key={ing.id} className="flex items-center gap-2 py-1 border-b border-(--color-border)">
@@ -108,8 +108,8 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
                 <span className="text-xs text-(--color-text-mid) whitespace-nowrap">
                   {ing.amount % 1 === 0 ? ing.amount : ing.amount.toFixed(1)} {ing.unit}
                 </span>
-                <button onClick={() => startEdit(ing)} className={iconBtnClass} title="Rediger" aria-label="Rediger"><Pencil size={12} /></button>
-                <button onClick={() => handleDelete(ing.id)} className={iconBtnClass} title="Slet" aria-label="Slet"><X size={12} /></button>
+                <button type="button" onClick={() => startEdit(ing)} className={iconBtnClass} title="Rediger" aria-label="Rediger"><Pencil size={12} /></button>
+                <button type="button" onClick={() => handleDelete(ing.id)} className={iconBtnClass} title="Slet" aria-label="Slet"><X size={12} /></button>
               </div>
             ),
           )}

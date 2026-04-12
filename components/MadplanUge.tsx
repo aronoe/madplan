@@ -22,6 +22,8 @@ import {
 import type { Recipe, WeekMeals } from "@/lib/types";
 import RecipePicker from "@/components/RecipePicker";
 import SelectedDayMealCard from "@/components/SelectedDayMealCard";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { UtensilsCrossed, ShoppingCart, Sparkles, X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
@@ -62,8 +64,8 @@ function RecipeKort({
         isDragging
           ? "bg-(--color-primary-subtle) opacity-40 shadow-none"
           : hovered
-          ? "bg-white shadow-[0_4px_12px_rgba(0,80,40,.13)]"
-          : "bg-white shadow-[0_1px_4px_rgba(0,80,40,.06)]",
+          ? "bg-(--color-surface) shadow-[0_4px_12px_rgba(0,0,0,.08)]"
+          : "bg-(--color-surface) shadow-[0_1px_4px_rgba(0,0,0,.06)]",
       )}
     >
       <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
@@ -121,7 +123,7 @@ function DagSlot({
             : isOver
             ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle)"
             : meal
-            ? "border-2 border-solid border-(--color-primary-subtle) bg-white shadow-[0_1px_6px_rgba(0,80,40,.07)]"
+            ? "border-2 border-solid border-(--color-primary-subtle) bg-(--color-surface) shadow-[0_1px_6px_rgba(0,0,0,.06)]"
             : "border-2 border-dashed border-(--color-primary-subtle) bg-(--color-active-bg)",
         )}
       >
@@ -160,7 +162,7 @@ function DragOverlayKort({
   recipe: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes">;
 }) {
   return (
-    <div className="bg-white border-2 border-(--color-primary) rounded-[10px] px-3.5 py-2 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,80,40,.18)] cursor-grabbing text-sm font-semibold text-(--color-primary-text)">
+    <div className="bg-(--color-surface) border-2 border-(--color-primary) rounded-[10px] px-3.5 py-2 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,.15)] cursor-grabbing text-sm font-semibold text-(--color-primary-text)">
       <span className="text-[20px]">{recipe.emoji}</span>
       {recipe.name}
       <span className="text-xs text-(--color-primary-hover) ml-1">
@@ -173,6 +175,7 @@ function DragOverlayKort({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MadplanUge({ familyId }: { familyId: string }) {
+  const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
   const [meals, setMeals] = useState<WeekMeals>({});
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -349,20 +352,20 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
         <div className="flex-1" />
 
         {/* Shopping list CTA */}
-        <a
+        <Link
           href="/shopping-list"
           className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
         >
           <ShoppingCart size={14} /> Se indkøbsliste
-        </a>
+        </Link>
 
         {/* Quick link to auto-planner */}
-        <a
+        <Link
           href="/"
           className="inline-flex items-center gap-1.5 bg-(--color-active-bg) text-(--color-primary-text) border border-(--color-primary-subtle) rounded-lg px-3.5 py-1.5 font-bold text-[13px] no-underline whitespace-nowrap"
         >
           <Sparkles size={14} /> Planlæg uge
-        </a>
+        </Link>
       </div>
 
       {/* ── Day grid ───────────────────────────────────────────────────────── */}
@@ -400,9 +403,9 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
           {plannedCount === 0 && (
             <div className="text-center py-3 text-(--color-primary-hover) text-sm">
               Ingen retter planlagt denne uge.{" "}
-              <a href="/" className="text-(--color-primary) font-bold">
+              <Link href="/" className="text-(--color-primary) font-bold">
                 Brug auto-planlæggeren →
-              </a>
+              </Link>
             </div>
           )}
         </>
@@ -428,7 +431,7 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
             // Keep the day selected so user sees the empty state
           }}
           onSwitch={() => setPickerForDay(selectedDay)}
-          onViewRecipe={() => window.open("/opskrifter", "_self")}
+          onViewRecipe={() => router.push("/opskrifter")}
         />
       )}
 
@@ -446,4 +449,4 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
 }
 
 const navBtnClass =
-  "bg-white border border-(--color-primary-subtle) rounded-lg px-3 py-1.5 cursor-pointer text-[13px] font-semibold text-(--color-text-mid) inline-flex items-center gap-1";
+  "bg-(--color-surface) border border-(--color-border) rounded-lg px-3 py-1.5 cursor-pointer text-[13px] font-semibold text-(--color-text-mid) inline-flex items-center gap-1";

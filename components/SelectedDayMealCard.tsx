@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getIngredientsForRecipe } from "@/lib/queries";
 import type { Recipe, RecipeIngredient } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { PackageOpen, UtensilsCrossed, FolderOpen, BookOpen, RefreshCw, Trash2 } from "lucide-react";
+import { PackageOpen, UtensilsCrossed, FolderOpen, BookOpen, RefreshCw, Trash2, Plus } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
@@ -43,7 +43,7 @@ export default function SelectedDayMealCard({
   const recipe = fullRecipe ?? meal;
 
   return (
-    <div className="bg-white border border-(--color-primary-subtle) rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,80,40,.08)]">
+    <div className="bg-(--color-bg) border border-(--color-primary-subtle) rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,.08)]">
       {/* Day label strip */}
       <div className="bg-(--color-primary) px-5 py-2.5 flex items-center justify-between">
         <span className="text-[13px] font-bold text-white uppercase tracking-wide">
@@ -119,12 +119,12 @@ export default function SelectedDayMealCard({
             <button onClick={onViewRecipe} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none")}>
               <BookOpen size={14} /> Se opskrift
             </button>
-            <button onClick={onSwitch} className={cn(actionBtnClass, "bg-white text-(--color-primary-text) border border-(--color-primary-subtle)")}>
+            <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-surface) text-(--color-primary-text) border border-(--color-border)")}>
               <RefreshCw size={14} /> Skift ret
             </button>
             <button
               onClick={onClear}
-              className={cn(actionBtnClass, "bg-white text-(--color-danger) border border-(--color-primary-subtle) ml-auto")}
+              className={cn(actionBtnClass, "bg-(--color-surface) text-(--color-danger) border border-(--color-border) ml-auto")}
             >
               <Trash2 size={14} /> Fjern
             </button>
@@ -138,7 +138,7 @@ export default function SelectedDayMealCard({
             Ingen ret planlagt denne dag
           </div>
           <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none")}>
-            <span className="text-base leading-none">＋</span> Tilføj ret
+            <Plus size={14} /> Tilføj ret
           </button>
         </div>
       )}
