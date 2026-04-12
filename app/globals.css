@@ -103,5 +103,4 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
 }
