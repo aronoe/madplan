@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
+/* ─── Semantic design tokens ──────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --color-bg:          #ffffff;
+  --color-surface:     #f9fafb;       /* neutral-50 */
+  --color-surface-2:   #f3f4f6;       /* neutral-100 */
+  --color-border:      #e5e7eb;       /* neutral-200 */
+  --color-border-focus:#6ee7b7;       /* emerald-300 */
+
+  /* Text */
+  --color-text:        #111827;       /* neutral-900 */
+  --color-text-mid:    #374151;       /* neutral-700 */
+  --color-text-muted:  #6b7280;       /* neutral-500 */
+
+  /* Accent (emerald) */
+  --color-primary:     #10b981;       /* emerald-500 */
+  --color-primary-hover:#059669;      /* emerald-600 */
+  --color-primary-subtle:#d1fae5;     /* emerald-100 */
+  --color-primary-text:#065f46;       /* emerald-900 */
+
+  /* States */
+  --color-danger:      #ef4444;
+  --color-danger-subtle:#fef2f2;
+  --color-warning-subtle:#fffbeb;
+  --color-warning-border:#fcd34d;
+
+  /* Nav */
+  --color-nav-bg:      #ffffff;
+  --color-nav-shadow:  0 1px 0 0 #e5e7eb;
+  --color-active-bg:   #ecfdf5;       /* emerald-50 */
+
+  /* Legacy aliases — gradually remove */
+  --c-page-bg:         var(--color-bg);
+  --c-nav-bg:          var(--color-nav-bg);
+  --c-nav-shadow:      var(--color-nav-shadow);
+  --c-card-bg:         var(--color-surface);
+  --c-input-bg:        var(--color-bg);
+  --c-active-bg:       var(--color-active-bg);
+  --c-btn-bg:          var(--color-primary);
+  --c-border:          var(--color-border);
+  --c-text-dark:       var(--color-text);
+  --c-text-mid:        var(--color-text-mid);
+  --c-text-muted:      var(--color-text-muted);
+  --c-text-body:       var(--color-text);
+  --c-slot-empty:      var(--color-surface-2);
+  --c-slot-over:       var(--color-primary-subtle);
+  --c-tag-bg:          var(--color-primary-subtle);
+  --c-tag-text:        var(--color-primary-text);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+.dark {
+  /* Surfaces */
+  --color-bg:          #09090b;       /* zinc-950 */
+  --color-surface:     #18181b;       /* zinc-900 */
+  --color-surface-2:   #27272a;       /* zinc-800 */
+  --color-border:      #3f3f46;       /* zinc-700 */
+  --color-border-focus:#6ee7b7;       /* emerald-300 */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Text */
+  --color-text:        #fafafa;       /* zinc-50 */
+  --color-text-mid:    #d4d4d8;       /* zinc-300 */
+  --color-text-muted:  #a1a1aa;       /* zinc-400 */
+
+  /* Accent */
+  --color-primary:     #10b981;
+  --color-primary-hover:#34d399;
+  --color-primary-subtle:#022c22;
+  --color-primary-text:#6ee7b7;
+
+  /* States */
+  --color-danger:      #f87171;
+  --color-danger-subtle:#450a0a;
+  --color-warning-subtle:#422006;
+  --color-warning-border:#854d0e;
+
+  /* Nav */
+  --color-nav-bg:      #18181b;
+  --color-nav-shadow:  0 1px 0 0 #3f3f46;
+  --color-active-bg:   #022c22;
+
+  /* Legacy aliases */
+  --c-page-bg:         var(--color-bg);
+  --c-nav-bg:          var(--color-nav-bg);
+  --c-nav-shadow:      var(--color-nav-shadow);
+  --c-card-bg:         var(--color-surface);
+  --c-input-bg:        var(--color-surface-2);
+  --c-active-bg:       var(--color-active-bg);
+  --c-btn-bg:          var(--color-primary);
+  --c-border:          var(--color-border);
+  --c-text-dark:       var(--color-text);
+  --c-text-mid:        var(--color-text-mid);
+  --c-text-muted:      var(--color-text-muted);
+  --c-text-body:       var(--color-text);
+  --c-slot-empty:      var(--color-surface-2);
+  --c-slot-over:       var(--color-primary-subtle);
+  --c-tag-bg:          var(--color-primary-subtle);
+  --c-tag-text:        var(--color-primary-text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
