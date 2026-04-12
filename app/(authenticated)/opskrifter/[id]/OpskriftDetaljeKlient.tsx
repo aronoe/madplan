@@ -410,7 +410,7 @@ export default function OpskriftDetaljeKlient({
                           width: 28,
                           height: 28,
                           borderRadius: "50%",
-                          background: "#4caf82",
+                          background: "var(--color-primary)",
                           color: "white",
                           fontWeight: 800,
                           fontSize: 13,
@@ -507,7 +507,7 @@ export default function OpskriftDetaljeKlient({
                           </button>
                           <button
                             onClick={() => handleDeleteStep(step.id)}
-                            style={{ ...iconActionBtn, color: "#c0392b" }}
+                            style={{ ...iconActionBtn, color: "var(--color-danger)" }}
                             title="Slet trin"
                           >
                             ✕
@@ -731,7 +731,7 @@ const textareaStyle: React.CSSProperties = {
 };
 
 const primarySmallBtnStyle: React.CSSProperties = {
-  background: "#4caf82",
+  background: "var(--color-primary)",
   color: "white",
   border: "none",
   borderRadius: 8,

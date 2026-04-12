@@ -2,8 +2,7 @@
 
 import { Search } from "lucide-react";
 import { cn } from "@/lib/cn";
-
-const CATEGORIES = ["Alle", "Dansk klassisk", "Italiensk inspireret", "Internationalt mix", "Supper og gryder", "Grill og ovn"];
+import { CATEGORIES } from "@/components/opskrifter/RecipeForm";
 
 interface RecipeFiltersProps {
   search: string;
