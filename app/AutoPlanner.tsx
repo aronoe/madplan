@@ -16,6 +16,8 @@ import type { Recipe } from "@/lib/types";
 import { buildSavePlan } from "@/lib/weekPlan";
 import ChipSelect from "@/components/ChipSelect";
 import WeekPreview from "@/components/WeekPreview";
+import { cn } from "@/lib/cn";
+import Button from "@/components/ui/Button";
 
 const PRESET_INGREDIENTS = ["Kylling", "Oksekød", "Laks", "Vegetar", "Pasta"];
 
@@ -211,182 +213,186 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 20 }}>
+    <div className="flex flex-col items-center pt-5">
 
-        {/* Preview step — shown after generating */}
-        {previewPlan ? (
-          <>
-            <WeekPreview
-              key={planVersion}
-              plan={previewPlan}
-              allRecipes={cachedRecipes}
-              selectedIngredients={selectedIngredients}
-              tempo={tempo}
-              warning={planWarning}
-              loading={approving || generating}
-              onRegenerate={handleRegenerate}
-              onApprove={handleApprove}
-            />
-            <button
-              type="button"
-              onClick={() => setPreviewPlan(null)}
-              style={{ marginTop: 16, background: "none", border: "none", color: "var(--c-text-muted)", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}
-            >
-              ← Tilbage til indstillinger
-            </button>
+      {/* Preview step — shown after generating */}
+      {previewPlan ? (
+        <>
+          <WeekPreview
+            key={planVersion}
+            plan={previewPlan}
+            allRecipes={cachedRecipes}
+            selectedIngredients={selectedIngredients}
+            tempo={tempo}
+            warning={planWarning}
+            loading={approving || generating}
+            onRegenerate={handleRegenerate}
+            onApprove={handleApprove}
+          />
+          <button
+            type="button"
+            onClick={() => setPreviewPlan(null)}
+            className="mt-4 bg-transparent border-none text-(--color-text-muted) cursor-pointer text-[13px] underline"
+          >
+            ← Tilbage til indstillinger
+          </button>
+          {error && (
+            <div className="mt-3 bg-(--color-danger-subtle) border border-(--color-danger) rounded-xl p-3 text-sm text-(--color-danger) max-w-lg w-full">
+              {error}
+            </div>
+          )}
+        </>
+      ) : (
+        /* Input step */
+        <div className="bg-(--color-surface) rounded-2xl shadow-sm border border-(--color-border) p-6 w-full max-w-lg mx-auto">
+          <h1 className="text-2xl font-extrabold text-(--color-text) mb-2">
+            🗓️ Planlæg din uge
+          </h1>
+          <p className="text-[15px] text-(--color-text-mid) mb-8">
+            Fortæl os hvad der er på tilbud, så vælger vi opskrifterne.
+          </p>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+            {/* Preset quick-chips */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-(--color-text-muted) mb-2">
+                Hvad er på tilbud denne uge?
+              </label>
+              <ChipSelect
+                options={PRESET_INGREDIENTS}
+                selected={selectedIngredients}
+                onChange={setSelectedIngredients}
+              />
+            </div>
+
+            {/* Search + custom chips */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-(--color-text-muted) mb-2">
+                Eller søg efter ingrediens
+              </label>
+              {/* Combined chip+input box */}
+              <div
+                className="flex flex-wrap items-center gap-1.5 px-2.5 py-2 rounded-xl border border-(--color-border) bg-(--color-bg) cursor-text min-h-11.5"
+                onClick={() => inputRef.current?.focus()}
+              >
+                {/* Show chips for non-preset selections */}
+                {selectedIngredients
+                  .filter((ing) => !PRESET_INGREDIENTS.includes(ing))
+                  .map((ing) => (
+                    <span
+                      key={ing}
+                      className="inline-flex items-center gap-1 bg-(--color-primary-subtle) text-(--color-primary-text) border border-(--color-primary) rounded-full py-0.5 pl-3 pr-2 text-[13px] font-semibold"
+                    >
+                      {ing}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeIngredient(ing); }}
+                        className="bg-transparent border-none cursor-pointer text-(--color-primary) text-sm leading-none p-0 flex items-center"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
+                  onFocus={() => { if (suggestions.length > 0) setDropdownOpen(true); }}
+                  placeholder="f.eks. svinefilet, ris…"
+                  className="flex-1 min-w-30 border-none outline-none bg-transparent text-(--color-text) text-[15px] px-1 py-0.5"
+                />
+              </div>
+              {/* Dropdown */}
+              {dropdownOpen && (
+                <div
+                  ref={dropdownRef}
+                  className="bg-(--color-surface) border border-(--color-border) rounded-xl mt-1 overflow-hidden shadow-md"
+                >
+                  {suggestions.map((name, i) => (
+                    <div
+                      key={name}
+                      onPointerDown={(e) => { e.preventDefault(); addIngredient(name); }}
+                      className={cn(
+                        "px-3.5 py-2.5 cursor-pointer text-sm text-(--color-text) hover:bg-(--color-active-bg) transition-colors",
+                        i < suggestions.length - 1 && "border-b border-(--color-border)"
+                      )}
+                    >
+                      {name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tempo */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-(--color-text-muted) mb-2">
+                Tempo
+              </label>
+              <div className="flex flex-col gap-2">
+                {TEMPO_OPTIONS.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className={cn(
+                      "flex items-center gap-2.5 cursor-pointer px-3.5 py-2.5 rounded-xl border transition-colors",
+                      tempo === value
+                        ? "border-(--color-primary) bg-(--color-active-bg)"
+                        : "border-(--color-border) bg-(--color-bg) hover:border-(--color-primary)/50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="tempo"
+                      value={value}
+                      checked={tempo === value}
+                      onChange={() => setTempo(value)}
+                      className="accent-(--color-primary) w-4 h-4"
+                    />
+                    <span className="text-sm font-semibold text-(--color-text)">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Days selector */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-(--color-text-muted) mb-2">
+                Antal dage
+              </label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDays(d)}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-lg border font-bold text-sm transition-colors",
+                      days === d
+                        ? "border-(--color-primary) bg-(--color-primary) text-white"
+                        : "border-(--color-border) bg-(--color-bg) text-(--color-text-mid) hover:border-(--color-primary)"
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {error && (
-              <div style={{ marginTop: 12, background: "#fff0f0", border: "1.5px solid #f5c6c6", borderRadius: 10, padding: "12px 16px", color: "#c0392b", fontSize: 14, maxWidth: 480, width: "100%" }}>
+              <div className="bg-(--color-danger-subtle) border border-(--color-danger) rounded-xl p-3 text-sm text-(--color-danger)">
                 {error}
               </div>
             )}
-          </>
-        ) : (
-          /* Input step */
-          <div style={{ background: "var(--c-card-bg)", borderRadius: 20, boxShadow: "0 2px 16px rgba(0,80,40,.10)", padding: "40px 36px", width: "100%", maxWidth: 480 }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--c-text-dark)", marginBottom: 8 }}>
-              🗓️ Planlæg din uge
-            </h1>
-            <p style={{ fontSize: 15, color: "var(--c-text-mid)", marginBottom: 32 }}>
-              Fortæl os hvad der er på tilbud, så vælger vi opskrifterne.
-            </p>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-              {/* Preset quick-chips */}
-              <div>
-                <label style={labelStyle}>Hvad er på tilbud denne uge?</label>
-                <ChipSelect
-                  options={PRESET_INGREDIENTS}
-                  selected={selectedIngredients}
-                  onChange={setSelectedIngredients}
-                />
-              </div>
-
-              {/* Search + custom chips */}
-              <div>
-                <label style={labelStyle}>Eller søg efter ingrediens</label>
-                {/* Combined chip+input box */}
-                <div
-                  style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 10, border: "1.5px solid var(--c-border)", background: "var(--c-input-bg)", cursor: "text", minHeight: 46 }}
-                  onClick={() => inputRef.current?.focus()}
-                >
-                  {/* Show chips for non-preset selections */}
-                  {selectedIngredients
-                    .filter((ing) => !PRESET_INGREDIENTS.includes(ing))
-                    .map((ing) => (
-                      <span
-                        key={ing}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#e8f8ef", color: "#1a5c35", border: "1.5px solid #4caf82", borderRadius: 20, padding: "3px 10px 3px 12px", fontSize: 13, fontWeight: 600 }}
-                      >
-                        {ing}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeIngredient(ing); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#4caf82", fontSize: 14, lineHeight: 1, padding: 0, display: "flex", alignItems: "center" }}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={handleInputKeyDown}
-                    onFocus={() => { if (suggestions.length > 0) setDropdownOpen(true); }}
-                    placeholder="f.eks. svinefilet, ris…"
-                    style={{ flex: 1, minWidth: 120, border: "none", outline: "none", background: "transparent", color: "var(--c-text-dark)", fontSize: 15, padding: "2px 4px" }}
-                  />
-                </div>
-                {/* Dropdown */}
-                {dropdownOpen && (
-                  <div
-                    ref={dropdownRef}
-                    style={{ background: "var(--c-card-bg)", border: "1.5px solid var(--c-border)", borderRadius: 10, marginTop: 4, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,80,40,.12)" }}
-                  >
-                    {suggestions.map((name, i) => (
-                      <div
-                        key={name}
-                        onPointerDown={(e) => { e.preventDefault(); addIngredient(name); }}
-                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "var(--c-text-dark)", borderBottom: i < suggestions.length - 1 ? "1px solid var(--c-border)" : "none" }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--c-active-bg)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-                      >
-                        {name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Tempo */}
-              <div>
-                <label style={labelStyle}>Tempo</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {TEMPO_OPTIONS.map(({ value, label }) => (
-                    <label
-                      key={value}
-                      style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "10px 14px", borderRadius: 10, border: tempo === value ? "2px solid #4caf82" : "1.5px solid var(--c-border)", background: tempo === value ? "var(--c-active-bg)" : "var(--c-input-bg)", transition: "border-color 0.15s" }}
-                    >
-                      <input
-                        type="radio"
-                        name="tempo"
-                        value={value}
-                        checked={tempo === value}
-                        onChange={() => setTempo(value)}
-                        style={{ accentColor: "#4caf82", width: 16, height: 16 }}
-                      />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--c-text-dark)" }}>{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Days selector */}
-              <div>
-                <label style={labelStyle}>Antal dage</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDays(d)}
-                      style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: days === d ? "2px solid #4caf82" : "1.5px solid var(--c-border)", background: days === d ? "#4caf82" : "var(--c-input-bg)", color: days === d ? "white" : "var(--c-text-mid)", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {error && (
-                <div style={{ background: "#fff0f0", border: "1.5px solid #f5c6c6", borderRadius: 10, padding: "12px 16px", color: "#c0392b", fontSize: 14 }}>
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={generating}
-                style={{ background: generating ? "var(--c-border)" : "#4caf82", color: "white", border: "none", borderRadius: 12, padding: "14px 0", fontWeight: 800, fontSize: 16, cursor: generating ? "not-allowed" : "pointer", width: "100%" }}
-              >
-                {generating ? "Finder opskrifter…" : "Planlæg min uge"}
-              </button>
-            </form>
-          </div>
-        )}
+            <Button type="submit" variant="primary" size="lg" fullWidth disabled={generating}>
+              {generating ? "Finder opskrifter…" : "Planlæg min uge"}
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--c-text-mid)",
-  marginBottom: 8,
-  textTransform: "uppercase",
-  letterSpacing: 0.5,
-};
-
