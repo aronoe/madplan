@@ -68,7 +68,15 @@ export default function SelectedDayMealCard({
 
           {/* Recipe identity */}
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-3xl leading-none shrink-0">{recipe.emoji}</span>
+            {fullRecipe?.image_url ? (
+              <img
+                src={fullRecipe.image_url}
+                alt={recipe.name}
+                className="w-14 h-14 rounded-lg object-cover shrink-0"
+              />
+            ) : (
+              <span className="text-3xl leading-none shrink-0">{recipe.emoji}</span>
+            )}
             <h2 className="text-lg font-semibold text-(--color-text) leading-snug m-0">
               {recipe.name}
             </h2>
