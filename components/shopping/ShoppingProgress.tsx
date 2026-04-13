@@ -18,21 +18,21 @@ export default function ShoppingProgress({
   return (
     <>
       <div className="mb-5">
-        <div className="flex justify-between mb-1.5 text-[13px] text-(--color-text-mid)">
-          <span>{bought} / {total} varer købt</span>
+        <div className="flex justify-between mb-2 text-sm">
+          <span className="text-(--color-text-muted)">{bought} / {total} varer købt</span>
           {hasChecked && (
             <button
               type="button"
               onClick={onClearChecked}
-              className="bg-transparent border-none text-(--color-text-muted) cursor-pointer text-xs p-0"
+              className="bg-transparent border-none text-(--color-text-muted) hover:text-(--color-text) cursor-pointer text-sm p-0 transition-colors"
             >
               Nulstil
             </button>
           )}
         </div>
-        <div className="h-1.5 bg-(--color-border) rounded-full overflow-hidden">
+        <div className="h-2 bg-(--color-border) rounded-full overflow-hidden">
           <div
-            className="h-full bg-(--color-primary) rounded-full transition-all"
+            className="h-full bg-(--color-primary) rounded-full transition-all duration-300"
             style={{ width: `${(bought / total) * 100}%` }}
           />
         </div>

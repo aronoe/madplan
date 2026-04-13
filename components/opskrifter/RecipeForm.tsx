@@ -45,9 +45,9 @@ export default function RecipeForm({ form, saving, error, onChange, onSubmit }: 
   const set = (patch: Partial<RecipeFormValues>) => onChange({ ...form, ...patch });
 
   return (
-    <form onSubmit={onSubmit} className="mb-8">
+    <form onSubmit={onSubmit} className="mb-6">
       <Card padding="lg" className="flex flex-col gap-4">
-        <div className="font-bold text-(--color-text) text-sm">
+        <div className="font-semibold text-(--color-text)">
           Tilføj opskrift
         </div>
 
@@ -128,7 +128,7 @@ export default function RecipeForm({ form, saving, error, onChange, onSubmit }: 
           />
         </div>
 
-        {error && <div className="text-red-600 text-xs">{error}</div>}
+        {error && <div className="text-(--color-danger) text-sm">{error}</div>}
 
         <Button type="submit" disabled={saving || !form.name.trim()} className="self-start">
           {saving ? "Gemmer…" : "Tilføj opskrift"}

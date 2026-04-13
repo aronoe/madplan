@@ -129,22 +129,24 @@ export async function updateRecipe(
     category: string | null;
     servings: number | null;
     notes: string | null;
-    image_url: string | null; // ✅ tilføjet
+    image_url: string | null;
   }>,
+  familyId?: string,
 ) {
   const supabase = createClient();
 
-  // 🔒 Fjern undefined værdier (meget vigtigt)
-  const cleanFields = Object.fromEntries(
-    Object.entries(fields).filter(([, value]) => value !== undefined),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cleanFields: any = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== undefined),
   );
 
-  const { data, error } = await supabase
-    .from("recipes")
-    .update(cleanFields)
-    .eq("id", id)
-    .select()
-    .single(); // ✅ vigtigt for stabil respons
+  let query = supabase.from("recipes").update(cleanFields).eq("id", id);
+
+  if (familyId) {
+    query = query.eq("family_id", familyId);
+  }
+
+  const { data, error } = await query.select().single();
 
   if (error) {
     console.error("[updateRecipe] Supabase error:", {
@@ -154,6 +156,7 @@ export async function updateRecipe(
       code: error.code,
       cleanFields,
       id,
+      familyId,
     });
     throw error;
   }

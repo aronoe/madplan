@@ -4,15 +4,26 @@ import { useEffect, useState } from "react";
 import { getIngredientsForRecipe } from "@/lib/queries";
 import type { Recipe, RecipeIngredient } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { PackageOpen, UtensilsCrossed, FolderOpen, BookOpen, RefreshCw, Trash2, Plus } from "lucide-react";
+import {
+  PackageOpen,
+  UtensilsCrossed,
+  FolderOpen,
+  BookOpen,
+  RefreshCw,
+  Trash2,
+  Plus,
+  Clock,
+} from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
+function formatAmount(n: number) {
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+}
+
 type Props = {
   dayIndex: number;
-  // Lightweight meal from WeekMeals (always available when a meal is set)
   meal: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes"> | null;
-  // Full recipe from the recipes array — may include servings, category, notes
   fullRecipe: Recipe | null;
   onClear: () => void;
   onSwitch: () => void;
@@ -30,7 +41,6 @@ export default function SelectedDayMealCard({
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [loadingIng, setLoadingIng] = useState(false);
 
-  // Fetch ingredients whenever the selected recipe changes
   useEffect(() => {
     if (!meal) { setIngredients([]); return; }
     setLoadingIng(true);
@@ -43,88 +53,102 @@ export default function SelectedDayMealCard({
   const recipe = fullRecipe ?? meal;
 
   return (
-    <div className="bg-(--color-bg) border border-(--color-primary-subtle) rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,.08)]">
-      {/* Day label strip */}
-      <div className="bg-(--color-primary) px-5 py-2.5 flex items-center justify-between">
-        <span className="text-[13px] font-bold text-white uppercase tracking-wide">
-          {DAGE[dayIndex]}
-        </span>
-        {meal && (
-          <span className="text-xs text-white/70">
-            {meal.time_minutes} min
-          </span>
-        )}
-      </div>
+    <div className="bg-(--color-bg) border border-(--color-border) rounded-xl shadow-sm">
 
       {meal && recipe ? (
-        <div className="px-6 py-5">
-          {/* Recipe title row */}
-          <div className="flex items-start gap-3.5 mb-4">
-            <span className="text-[44px] leading-none shrink-0">{recipe.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-extrabold text-(--color-primary-text) m-0 mb-1.5 leading-tight">
-                {recipe.name}
-              </h2>
-              {/* Meta tags */}
-              <div className="flex flex-wrap gap-2">
-                {fullRecipe?.servings && (
-                  <MetaChip icon={<UtensilsCrossed size={12} />} label={`${fullRecipe.servings} pers.`} />
-                )}
-                {fullRecipe?.category && (
-                  <MetaChip icon={<FolderOpen size={12} />} label={fullRecipe.category} />
-                )}
-                {(fullRecipe?.tags ?? []).map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[11px] bg-(--color-active-bg) text-(--color-primary-text) border border-(--color-primary-subtle) rounded-md px-2 py-0.5 font-semibold"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
+        <div className="p-5">
+
+          {/* Day + time eyebrow */}
+          <div className="flex items-center gap-2 text-xs text-(--color-text-muted) mb-3">
+            <span className="font-medium">{DAGE[dayIndex]}</span>
+            <span>·</span>
+            <Clock size={11} />
+            <span>{meal.time_minutes} min</span>
           </div>
 
-          {/* Ingredients */}
-          <div className="mb-5">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-(--color-primary-hover) mb-2.5">
-              Ingredienser
-            </div>
-
-            {loadingIng ? (
-              <div className="text-[13px] text-(--color-border) italic">Henter…</div>
-            ) : ingredients.length === 0 ? (
-              <div className="text-[13px] text-(--color-border) italic">
-                Ingen ingredienser tilføjet endnu.
-              </div>
-            ) : (
-              <div className="grid gap-x-4 gap-y-0" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-                {ingredients.map((ing) => (
-                  <div
-                    key={ing.id}
-                    className="flex justify-between items-center py-1.5 border-b border-(--color-active-bg) text-[13px]"
-                  >
-                    <span className="text-(--color-text) font-medium">{ing.name}</span>
-                    <span className="text-(--color-primary-hover) font-semibold whitespace-nowrap ml-2">
-                      {ing.amount % 1 === 0 ? ing.amount : ing.amount.toFixed(1)} {ing.unit}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Recipe identity */}
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-3xl leading-none shrink-0">{recipe.emoji}</span>
+            <h2 className="text-lg font-semibold text-(--color-text) leading-snug m-0">
+              {recipe.name}
+            </h2>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2.5">
-            <button onClick={onViewRecipe} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none")}>
+          {/* Secondary meta — servings + category as plain text */}
+          {(fullRecipe?.servings || fullRecipe?.category) && (
+            <div className="flex items-center gap-2 text-sm text-(--color-text-muted) mb-3">
+              {fullRecipe.servings && (
+                <span className="flex items-center gap-1">
+                  <UtensilsCrossed size={12} /> {fullRecipe.servings} pers.
+                </span>
+              )}
+              {fullRecipe.servings && fullRecipe.category && <span>·</span>}
+              {fullRecipe.category && (
+                <span className="flex items-center gap-1">
+                  <FolderOpen size={12} /> {fullRecipe.category}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Tags — quiet, neutral */}
+          {(fullRecipe?.tags ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {(fullRecipe?.tags ?? []).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs bg-(--color-surface-2) text-(--color-text-muted) rounded px-2 py-0.5"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Ingredients — flowing list, no borders */}
+          {(loadingIng || ingredients.length > 0) && (
+            <div className="mb-5">
+              <div className="text-xs text-(--color-text-muted) mb-2">
+                Ingredienser
+              </div>
+              {loadingIng ? (
+                <p className="text-sm text-(--color-text-muted) italic m-0">Henter…</p>
+              ) : (
+                <ul className="list-none p-0 m-0 flex flex-col gap-0">
+                  {ingredients.map((ing) => (
+                    <li key={ing.id} className="flex justify-between text-sm py-1 border-b border-(--color-border) last:border-0">
+                      <span className="text-(--color-text)">{ing.name}</span>
+                      <span className="text-(--color-text-muted)">
+                        {formatAmount(ing.amount)} {ing.unit}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Actions — clear weight hierarchy */}
+          <div className="flex items-center gap-1.5 pt-4 border-t border-(--color-border)">
+            {/* Primary */}
+            <button
+              onClick={onViewRecipe}
+              className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
+            >
               <BookOpen size={14} /> Se opskrift
             </button>
-            <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-surface) text-(--color-primary-text) border border-(--color-border)")}>
+            {/* Secondary — ghost */}
+            <button
+              onClick={onSwitch}
+              className="inline-flex items-center gap-1.5 text-(--color-text-muted) hover:text-(--color-text) rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors"
+            >
               <RefreshCw size={14} /> Skift ret
             </button>
+            <div className="flex-1" />
+            {/* Destructive — ghost, right-aligned */}
             <button
               onClick={onClear}
-              className={cn(actionBtnClass, "bg-(--color-surface) text-(--color-danger) border border-(--color-border) ml-auto")}
+              className="inline-flex items-center gap-1.5 text-(--color-danger) hover:bg-(--color-danger-subtle) rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors"
             >
               <Trash2 size={14} /> Fjern
             </button>
@@ -132,12 +156,15 @@ export default function SelectedDayMealCard({
         </div>
       ) : (
         /* Empty state */
-        <div className="px-6 py-8 flex flex-col items-center gap-3">
-          <PackageOpen size={36} className="text-(--color-primary-hover)" />
-          <div className="text-[15px] text-(--color-primary-hover) font-semibold">
-            Ingen ret planlagt denne dag
-          </div>
-          <button onClick={onSwitch} className={cn(actionBtnClass, "bg-(--color-primary) text-white border-none")}>
+        <div className="p-8 flex flex-col items-center gap-3">
+          <PackageOpen size={28} className="text-(--color-text-muted)" strokeWidth={1.5} />
+          <p className="text-sm text-(--color-text-muted) m-0">
+            {DAGE[dayIndex]} — ingen ret planlagt
+          </p>
+          <button
+            onClick={onSwitch}
+            className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
+          >
             <Plus size={14} /> Tilføj ret
           </button>
         </div>
@@ -145,14 +172,3 @@ export default function SelectedDayMealCard({
     </div>
   );
 }
-
-function MetaChip({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-(--color-surface-2) text-(--color-text-muted)">
-      {icon} {label}
-    </span>
-  );
-}
-
-const actionBtnClass =
-  "inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 font-bold text-[13px] cursor-pointer whitespace-nowrap";

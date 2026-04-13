@@ -1,55 +1,65 @@
-"use client";
-
 import type { Recipe } from "@/lib/types";
-import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import RecipeIngredientEditor from "./RecipeIngredientEditor";
-import { Carrot, BookOpen } from "lucide-react";
+import RecipeImage from "@/components/ui/RecipeImage";
+import { Clock, Users, Tag } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 interface RecipeCardProps {
   recipe: Recipe;
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onView: () => void;
-  onDelete: () => void;
+  onClick: () => void;
 }
 
-export default function RecipeCard({
-  recipe: r,
-  expanded,
-  onToggleExpand,
-  onView,
-  onDelete,
-}: RecipeCardProps) {
+export default function RecipeCard({ recipe: r, onClick }: RecipeCardProps) {
   return (
-    <Card active={expanded}>
-      {/* Header row */}
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{r.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-(--color-text) text-sm">
-            {r.name}
-          </div>
-          <div className="flex gap-2 mt-1 flex-wrap">
-            <Badge variant="meta">⏱ {r.time_minutes} min</Badge>
-            {r.tags?.map((tag) => <Badge key={tag}>{tag}</Badge>)}
-          </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group text-left w-full rounded-xl border border-(--color-border) bg-(--color-surface)",
+        "shadow-sm hover:shadow-md hover:border-(--color-primary)",
+        "transition-[box-shadow,border-color] duration-150",
+        "overflow-hidden flex flex-col h-full cursor-pointer",
+      )}
+    >
+      {/* Image / placeholder */}
+      <RecipeImage src={r.image_url} alt={r.name} emoji={r.emoji} className="shrink-0" />
+
+      {/* Body */}
+      <div className="flex flex-col flex-1 p-4">
+        <h3 className="font-semibold text-(--color-text) text-base line-clamp-2 leading-snug mb-2">
+          {r.name}
+        </h3>
+
+        {/* Metadata */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-(--color-text-muted)">
+          <span className="flex items-center gap-1">
+            <Clock size={13} /> {r.time_minutes} min
+          </span>
+          {r.servings && (
+            <span className="flex items-center gap-1">
+              <Users size={13} /> {r.servings} pers.
+            </span>
+          )}
+          {r.category && (
+            <span className="flex items-center gap-1">
+              <Tag size={13} /> {r.category}
+            </span>
+          )}
         </div>
 
-        <Button variant="secondary" size="sm" onClick={onToggleExpand} title={expanded ? "Skjul ingredienser" : "Vis ingredienser"}>
-          <Carrot size={14} /> Ingredienser {expanded ? "▲" : "▼"}
-        </Button>
-        <Button variant="secondary" size="sm" onClick={onView}>
-          <BookOpen size={14} /> Vis
-        </Button>
-        <Button variant="danger" size="sm" onClick={onDelete}>
-          Slet
-        </Button>
+        {/* Tags */}
+        {r.tags && r.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2.5">
+            {r.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-xs bg-(--color-surface-2) text-(--color-text-muted) rounded px-1.5 py-0.5"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Ingredient editor — only mounted when expanded */}
-      {expanded && <RecipeIngredientEditor recipeId={r.id} />}
-    </Card>
+    </button>
   );
 }

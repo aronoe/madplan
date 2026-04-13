@@ -138,12 +138,12 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
         <>
           {/* Meals this week */}
           {meals.length > 0 && (
-            <div className="bg-(--color-primary-subtle) rounded-xl px-4 py-2.5 mb-5 flex flex-wrap gap-2 items-center">
-              <span className="text-xs font-bold text-(--color-text-mid) uppercase tracking-wide mr-1">
+            <div className="bg-(--color-surface) border border-(--color-border) rounded-xl px-4 py-3 mb-5 flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mr-1">
                 Denne uge:
               </span>
               {meals.map((m, i) => (
-                <span key={i} className="text-[13px] bg-(--color-surface) border border-(--color-border) rounded-lg px-2.5 py-0.5 text-(--color-text) font-semibold">
+                <span key={i} className="text-sm bg-(--color-bg) border border-(--color-border) rounded-lg px-2.5 py-0.5 text-(--color-text)">
                   {m.emoji} {m.name}
                 </span>
               ))}
@@ -173,7 +173,7 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
 
           {/* Offer items */}
           {offerItems.length > 0 && (
-            <div className="bg-(--color-surface) rounded-[14px] overflow-hidden shadow-[0_1px_8px_rgba(0,80,40,.07)] mb-4 opacity-75">
+            <div className="bg-(--color-surface) rounded-xl overflow-hidden border border-(--color-border) shadow-sm mb-4 opacity-75">
               {offerItems.map((ing, i) => (
                 <ShoppingItemRow
                   key={itemKey(ing)}
@@ -189,7 +189,7 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
 
           {/* Checked items */}
           {checkedItems.length > 0 && (
-            <div className="bg-(--color-surface) rounded-[14px] overflow-hidden opacity-60 shadow-[0_1px_8px_rgba(0,80,40,.04)]">
+            <div className="bg-(--color-surface) rounded-xl overflow-hidden border border-(--color-border) opacity-60">
               {checkedItems.map((ing, i) => (
                 <ShoppingItemRow
                   key={itemKey(ing)}

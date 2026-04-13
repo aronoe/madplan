@@ -10,7 +10,7 @@ import {
 import type { RecipeIngredient } from "@/lib/types";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const DEFAULT_ING = { name: "", amount: 1, unit: "stk" };
@@ -103,9 +103,9 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
                 <button type="button" onClick={() => setEditId(null)} className={iconBtnClass} title="Annuller" aria-label="Annuller"><X size={12} /></button>
               </div>
             ) : (
-              <div key={ing.id} className="flex items-center gap-2 py-1 border-b border-(--color-border)">
-                <span className="flex-1 text-xs text-(--color-text)">{ing.name}</span>
-                <span className="text-xs text-(--color-text-mid) whitespace-nowrap">
+              <div key={ing.id} className="flex items-center gap-2 py-1.5 border-b border-(--color-border)/50">
+                <span className="flex-1 text-sm text-(--color-text)">{ing.name}</span>
+                <span className="text-sm text-(--color-text-muted) whitespace-nowrap">
                   {ing.amount % 1 === 0 ? ing.amount : ing.amount.toFixed(1)} {ing.unit}
                 </span>
                 <button type="button" onClick={() => startEdit(ing)} className={iconBtnClass} title="Rediger" aria-label="Rediger"><Pencil size={12} /></button>
@@ -122,7 +122,7 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
         <Input compact type="number" min={0} step="any" placeholder="Mængde" value={addForm.amount} onChange={(e) => setAddForm((f) => ({ ...f, amount: Number(e.target.value) }))} className="w-20" />
         <Input compact placeholder="Enhed" value={addForm.unit} onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))} className="w-20" />
         <Button type="submit" size="sm" disabled={adding || !addForm.name.trim()}>
-          {adding ? "…" : "+ Tilføj"}
+          {adding ? "…" : <><Plus size={12} /> Tilføj</>}
         </Button>
       </form>
     </div>
