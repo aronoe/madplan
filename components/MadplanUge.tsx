@@ -35,10 +35,12 @@ function RecipeKort({
   recipe,
   dragId,
   compact = false,
+  imageUrl,
 }: {
   recipe: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes">;
   dragId: string;
   compact?: boolean;
+  imageUrl?: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: dragId });
   const [hovered, setHovered] = useState(false);
@@ -68,7 +70,15 @@ function RecipeKort({
           : "bg-(--color-surface) shadow-sm",
       )}
     >
-      <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className={cn("rounded object-cover shrink-0", compact ? "w-6 h-6" : "w-7 h-7")}
+        />
+      ) : (
+        <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
+      )}
       <span
         className={cn(
           "font-semibold text-(--color-primary-text) overflow-hidden text-ellipsis whitespace-nowrap",
@@ -91,12 +101,14 @@ function RecipeKort({
 function DagSlot({
   dayIndex,
   meal,
+  imageUrl,
   isSelected,
   onSelect,
   onClear,
 }: {
   dayIndex: number;
   meal: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes"> | null;
+  imageUrl?: string | null;
   isSelected: boolean;
   onSelect: () => void;
   onClear: () => void;
@@ -129,7 +141,7 @@ function DagSlot({
       >
         {meal ? (
           <>
-            <RecipeKort recipe={meal} dragId={`day-${dayIndex}`} compact />
+            <RecipeKort recipe={meal} dragId={`day-${dayIndex}`} compact imageUrl={imageUrl} />
             <button
               onClick={(e) => { e.stopPropagation(); onClear(); }}
               className="absolute top-1 right-1 w-5 h-5 rounded-full border-none bg-(--color-active-bg) text-(--color-primary-hover) cursor-pointer text-xs flex items-center justify-center leading-none p-0"
@@ -393,6 +405,7 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
                 key={i}
                 dayIndex={i}
                 meal={meals[i] ?? null}
+                imageUrl={meals[i] ? (recipes.find((r) => r.id === meals[i]!.id)?.image_url ?? null) : null}
                 isSelected={selectedDay === i}
                 onSelect={() => setSelectedDay(i)}
                 onClear={() => handleClear(i)}
