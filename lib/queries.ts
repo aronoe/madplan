@@ -16,6 +16,16 @@ export function getWeekStart(offset = 0): string {
   return `${y}-${m}-${d}`;
 }
 
+export function addWeeks(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + n * 7);
+  const ny = date.getFullYear();
+  const nm = String(date.getMonth() + 1).padStart(2, "0");
+  const nd = String(date.getDate()).padStart(2, "0");
+  return `${ny}-${nm}-${nd}`;
+}
+
 export async function getMealPlan(familyId: string, weekStart: string) {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -111,13 +121,16 @@ export async function addRecipe(
     category: string | null;
     servings: number | null;
   },
-) {
+): Promise<{ id: string }> {
   const supabase = createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("recipes")
-    .insert({ family_id: familyId, created_by: createdBy, ...recipe });
+    .insert({ family_id: familyId, created_by: createdBy, ...recipe })
+    .select("id")
+    .single();
 
   if (error) throw error;
+  return data;
 }
 export async function updateRecipe(
   id: string,
@@ -133,38 +146,34 @@ export async function updateRecipe(
   }>,
   familyId?: string,
 ) {
-  const supabase = createClient();
+  // Send the update through the internal Next.js API route instead of calling
+  // Supabase REST directly from the browser — direct PATCH requests are
+  // blocked by Supabase's CORS policy (PATCH not in Allow-Methods preflight).
+  const res = await fetch(`/api/recipes/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ family_id: familyId, ...fields }),
+  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cleanFields: any = Object.fromEntries(
-    Object.entries(fields).filter(([, v]) => v !== undefined),
-  );
-
-  let query = supabase.from("recipes").update(cleanFields).eq("id", id);
-
-  if (familyId) {
-    query = query.eq("family_id", familyId);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const json = await res.json();
+      detail = json.error ?? json.details ?? "";
+    } catch {
+      // ignore parse error
+    }
+    throw new Error(
+      `[updateRecipe] API error ${res.status}${detail ? `: ${detail}` : ""}`,
+    );
   }
 
-  const { data, error } = await query.select().single();
-
-  if (error) {
-    console.error("[updateRecipe] Supabase error:", {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-      cleanFields,
-      id,
-      familyId,
-    });
-    throw error;
-  }
-
+  const { data } = await res.json();
   return data;
 }
 
 export interface AggregatedIngredient {
+  id: string;   // recipe_ingredient_id — unique per row, used as check key
   name: string;
   amount: number;
   unit: string;
@@ -191,7 +200,7 @@ export async function getIngredientsForMealPlan(
 
   const { data: rows, error: ingError } = await supabase
     .from("recipe_ingredients")
-    .select("amount, unit, ingredients(name)")
+    .select("id, amount, unit, ingredients(name)")
     .in("recipe_id", recipeIds);
 
   if (ingError) throw ingError;
@@ -199,11 +208,13 @@ export async function getIngredientsForMealPlan(
 
   const flatRows = (
     rows as unknown as Array<{
+      id: string;
       amount: number;
       unit: string;
       ingredients: { name: string } | null;
     }>
   ).map((row) => ({
+    id: row.id,
     name: row.ingredients?.name ?? "",
     amount: row.amount,
     unit: row.unit,
@@ -457,6 +468,72 @@ export async function uploadStepImage(
 
   const { data } = supabase.storage.from("recipe-images").getPublicUrl(path);
   return data.publicUrl;
+}
+
+// ── Shopping checked state ────────────────────────────────────────────────────
+
+export async function getShoppingChecked(
+  familyId: string,
+  weekStart: string,
+): Promise<Set<string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shopping_checked")
+    .select("recipe_ingredient_id")
+    .eq("family_id", familyId)
+    .eq("week_start", weekStart)
+    .not("recipe_ingredient_id", "is", null);
+  if (error) throw error;
+  return new Set(
+    (data ?? []).map(
+      (r: { recipe_ingredient_id: string }) => r.recipe_ingredient_id,
+    ),
+  );
+}
+
+export async function setShoppingItemChecked(
+  familyId: string,
+  weekStart: string,
+  recipeIngredientId: string,
+  checked: boolean,
+): Promise<void> {
+  console.log("toggle item", { id: recipeIngredientId, family_id: familyId, week_start: weekStart, checked });
+  const supabase = createClient();
+  if (checked) {
+    const { error } = await supabase.from("shopping_checked").insert({
+      family_id: familyId,
+      week_start: weekStart,
+      recipe_ingredient_id: recipeIngredientId,
+    });
+    if (error) {
+      console.error("Insert failed", error);
+      throw error;
+    }
+  } else {
+    const { error } = await supabase
+      .from("shopping_checked")
+      .delete()
+      .eq("family_id", familyId)
+      .eq("week_start", weekStart)
+      .eq("recipe_ingredient_id", recipeIngredientId);
+    if (error) {
+      console.error("Delete failed", error);
+      throw error;
+    }
+  }
+}
+
+export async function clearShoppingChecked(
+  familyId: string,
+  weekStart: string,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("shopping_checked")
+    .delete()
+    .eq("family_id", familyId)
+    .eq("week_start", weekStart);
+  if (error) throw error;
 }
 
 // ── Family / Auth ─────────────────────────────────────────────────────────────
