@@ -18,7 +18,7 @@ User pastes a recipe URL, clicks import, reviews and corrects parsed ingredients
 4. Client receives `ParsedRecipe` with structured `ParsedIngredient[]`
 5. Form prefills (name, time, servings); review panel shows editable ingredients + steps
 6. User corrects any low-confidence rows
-7. User clicks "Tilføj opskrift" → recipe + ingredients + steps saved atomically
+7. User clicks "Tilføj opskrift" → recipe created first, then ingredients and steps inserted sequentially; any insertion error surfaces to the user without rolling back
 
 ---
 
@@ -40,9 +40,9 @@ interface ImportedRecipe {
 ```typescript
 interface ParsedIngredient {
   original: string;         // "500 g hakket kalv og flæsk"
-  name: string;             // "hakket kalv og flæsk"
-  normalized_name: string;  // "hakket kalv og flæsk" (lowercase, no parens)
-  amount: string;           // "500", "1½", "2-3", "" — kept as string
+  name: string;             // "hakket kalv og flæsk" — display name, stored in DB
+  normalized_name: string;  // "hakket kalv og flæsk" (lowercase, no parens) — NOT stored in DB; reserved for future grouping/search
+  amount: string;           // "500", "1½", "2-3", "" — kept as string for UI editing
   unit: string;             // "g", "dl", "spsk", ""
   confidence: "high" | "medium" | "low";
 }
@@ -170,7 +170,7 @@ No authentication needed (public fetch). Runs as Next.js Route Handler.
 
 **UI sections:**
 
-**Image** (if `imageUrl`): small `<img>` thumbnail, `h-24 object-cover rounded-lg`
+**Image** (if `imageUrl`): small `<img>` thumbnail, `h-24 object-cover rounded-lg`. The image URL is not editable in this panel — it is saved automatically to the recipe after creation via `updateRecipe`. If import returned no image, none is shown and none is saved.
 
 **Warning banner** (if any `confidence !== "high"`):
 > "⚠️ X ingredienser skal tjekkes" — amber text, shown above table
@@ -207,6 +207,7 @@ function handleImport(data: ParsedRecipe) {
     name: data.title,
     time_minutes: data.time_minutes ?? DEFAULT_FORM.time_minutes,
     servings: data.servings ?? DEFAULT_FORM.servings,
+    // image_url is not a RecipeFormValues field; stored separately after recipe creation
   });
   setShowForm(true);
 }
@@ -225,16 +226,39 @@ function handleImport(data: ParsedRecipe) {
 </div>
 ```
 
+**Pre-save validation (ingredient amounts):**
+
+Before calling `addRecipe`, validate all `parsedIngredients` rows:
+- If `row.amount` is non-empty, `parseFloat(row.amount.replace(",", "."))` must produce a finite number.
+- If any row fails: show validation error, block save, keep import state intact.
+- Empty `amount` is allowed (ingredients with no quantity, e.g. "salt").
+
+The "Tilføj opskrift" button is only enabled when all rows pass this check. Rows with unparseable amounts retain their amber confidence indicator as a hard block, not a cosmetic warning.
+
 **`handleSubmit` extended:**
 ```typescript
+// Validate amounts before touching the DB
+const invalidRows = parsedIngredients.filter(
+  (row) => row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")))
+);
+if (invalidRows.length > 0) {
+  setError(`Ret mængde-felterne markeret med advarsel før du gemmer.`);
+  return;
+}
+
 // After addRecipe returns { id }:
 const recipeId = newRecipe.id;
 
-// Insert ingredients sequentially (preserve order)
+// If imported data includes an image URL, save it to the recipe immediately
+if (importedData.image_url) {
+  await updateRecipe(recipeId, { image_url: importedData.image_url });
+}
+
+// Insert ingredients sequentially (preserve sort order)
 for (const row of parsedIngredients) {
   await addIngredient(recipeId, {
-    name: row.normalized_name || row.name,
-    amount: parseFloat(row.amount.replace(",", ".")) || 0,
+    name: row.name,                                      // display name — not normalized_name
+    amount: row.amount === "" ? 0 : parseFloat(row.amount.replace(",", ".")),
     unit: row.unit,
   });
 }
@@ -270,9 +294,19 @@ Backward-compatible: existing caller in `OpskrifterKlient.handleSubmit` ignores 
 
 ## Amount Conversion on Save
 
-`amount` is stored as `string` in `ParsedIngredient` to preserve "1½", "2-3" etc. in the UI. The `recipe_ingredients.amount` DB column is numeric. On save: `parseFloat(row.amount.replace(",", ".")) || 0`.
+`amount` is stored as `string` in `ParsedIngredient` to preserve original text ("1½", "2-3") in the UI for user review. The `recipe_ingredients.amount` DB column is numeric.
 
-This is intentionally simple — no fraction evaluation, no range averaging. "1½" → NaN → `0`, "2-3" → `2`. Users should correct these before saving (the confidence indicator signals which rows need attention). Future improvement: evaluate fraction strings properly.
+**Conversion rule on save:**
+- Empty string → `0` (ingredient with no quantity)
+- Non-empty string → `parseFloat(amount.replace(",", "."))` — must be finite, otherwise blocked
+
+**User responsibility:** The confidence indicator (amber) on medium/low rows is a **required correction signal**, not cosmetic. Rows with non-parseable amounts block save entirely. The parser intentionally marks these rows medium/low so users see and fix them before committing.
+
+"1½" will parse as `NaN` (not supported by `parseFloat`) → amber, blocks save. User must correct to `1.5` or `1` in the amount field before saving.
+
+"2-3" will parse as `2` (parseFloat stops at `-`) → this is acceptable and amounts to choosing the lower bound. Rows with ranges are marked medium confidence so users are aware.
+
+`normalized_name` is computed in the parser and included in `ParsedIngredient` for potential future use (ingredient grouping, deduplication). It is **not stored in the DB** in v1. The `ingredients.name` column always receives `row.name` (the display-friendly extracted name).
 
 ---
 
@@ -284,7 +318,8 @@ This is intentionally simple — no fraction evaluation, no range averaging. "1�
 | HTTP 4xx/5xx | "Kunne ikke hente siden: HTTP 404" |
 | No JSON-LD Recipe found | "Ingen opskrift fundet på denne side." |
 | Malformed JSON-LD | Parser skips that block, tries next |
-| Ingredient save fails | Surface error in form, leave import state intact |
+| Ingredient amount unparseable on save | Validation blocks save; user must correct the row | 
+| Ingredient or step save fails mid-sequence | Surface error in form; recipe already created — user can retry or continue editing via recipe detail view |
 
 ---
 
