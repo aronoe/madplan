@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getIngredientsForMealPlan, getMealPlan, getWeekStart } from "@/lib/queries";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  getIngredientsForMealPlan,
+  getMealPlan,
+  getRecipe,
+  getIngredientsForRecipe,
+  getShoppingChecked,
+  setShoppingItemChecked,
+  clearShoppingChecked,
+  getWeekStart,
+} from "@/lib/queries";
 import type { AggregatedIngredient } from "@/lib/queries";
 import type { Recipe } from "@/lib/types";
 import ShoppingHeader from "@/components/shopping/ShoppingHeader";
@@ -37,13 +47,20 @@ function groupByCategory(items: AggregatedIngredient[]) {
 }
 
 export default function ShoppingListClient({ familyId }: { familyId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const recipeId = searchParams.get("recipeId");
+
   const [weekOffset, setWeekOffset] = useState(0);
   const [ingredients, setIngredients] = useState<AggregatedIngredient[]>([]);
   const [meals, setMeals] = useState<Pick<Recipe, "name" | "emoji">[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // checked: Record<recipe_ingredient_id, boolean>
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [offerIngredients, setOfferIngredients] = useState<string[]>([]);
+  const [recipeFilter, setRecipeFilter] = useState<Set<string> | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
   const weekStart = getWeekStart(weekOffset);
 
@@ -65,18 +82,21 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
   useEffect(() => {
     setLoading(true);
     setFetchError(null);
-    setChecked(JSON.parse(localStorage.getItem(`shopping-checked-${weekStart}`) ?? "{}"));
     Promise.all([
       getIngredientsForMealPlan(familyId, weekStart),
       getMealPlan(familyId, weekStart),
+      getShoppingChecked(familyId, weekStart),
     ])
-      .then(([ings, plan]) => {
+      .then(([ings, plan, checkedIds]) => {
         setIngredients(ings);
         setMeals(
           (plan ?? [])
             .map((p) => p.recipe as unknown as Pick<Recipe, "name" | "emoji">)
             .filter(Boolean),
         );
+        const checkedMap: Record<string, boolean> = {};
+        for (const id of checkedIds) checkedMap[id] = true;
+        setChecked(checkedMap);
       })
       .catch((err: unknown) =>
         setFetchError(err instanceof Error ? err.message : "Ukendt fejl"),
@@ -84,28 +104,110 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
       .finally(() => setLoading(false));
   }, [familyId, weekStart]);
 
-  function toggleChecked(key: string) {
+  // Recipe filter: match by recipe_ingredient_id (exact same IDs as AggregatedIngredient.id)
+  useEffect(() => {
+    if (!recipeId) {
+      setRecipeFilter(null);
+      setSelectedRecipe(null);
+      return;
+    }
+    Promise.all([
+      getIngredientsForRecipe(recipeId),
+      getRecipe(recipeId),
+    ])
+      .then(([ings, recipe]) => {
+        setRecipeFilter(new Set(ings.map((i) => i.id)));
+        setSelectedRecipe(recipe as unknown as Recipe);
+      })
+      .catch(() => {
+        setRecipeFilter(null);
+        setSelectedRecipe(null);
+      });
+  }, [recipeId]);
+
+  // Tracks IDs currently being written to Supabase.
+  // Using a ref (not state) so updates don't trigger re-renders.
+  const savingIds = useRef<Set<string>>(new Set());
+
+  // Toggle one or more recipe_ingredient_ids together.
+  // If all are currently checked → uncheck all; otherwise → check all.
+  function toggleChecked(ids: string[]) {
+    // Outer guard: skip if any ID is already in-flight (double-click protection)
+    if (ids.some((id) => savingIds.current.has(id))) {
+      console.log("[shopping] toggle ignored — already saving:", ids);
+      return;
+    }
+
     setChecked((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(`shopping-checked-${weekStart}`, JSON.stringify(next));
+      const allChecked = ids.every((id) => prev[id]);
+      const newValue = !allChecked;
+      const next = { ...prev };
+      for (const id of ids) next[id] = newValue;
+      const changed = ids.filter((id) => Boolean(prev[id]) !== newValue);
+
+      if (changed.length > 0) {
+        // Inner guard: filter out IDs already claimed by a concurrent invocation.
+        // This is the key fix for React StrictMode, which calls state updaters
+        // twice in development — the second call would otherwise launch a
+        // duplicate DB write for the same IDs.
+        const toSave = changed.filter((id) => !savingIds.current.has(id));
+        if (toSave.length > 0) {
+          for (const id of toSave) savingIds.current.add(id);
+          console.log("[shopping] toggle item", { ids: toSave, newValue });
+          Promise.all(
+            toSave.map((id) => setShoppingItemChecked(familyId, weekStart, id, newValue)),
+          )
+            .catch(() => {
+              console.error("[shopping] toggle failed, reverting:", toSave);
+              setChecked(prev);
+            })
+            .finally(() => {
+              for (const id of toSave) savingIds.current.delete(id);
+            });
+        }
+      }
+
       return next;
     });
   }
 
   function clearChecked() {
     setChecked({});
-    localStorage.removeItem(`shopping-checked-${weekStart}`);
+    clearShoppingChecked(familyId, weekStart).catch(() => {
+      // Silently ignore — the cleared state is already applied locally
+    });
   }
 
-  const itemKey = (ing: AggregatedIngredient) =>
-    `${ing.name.toLowerCase()}__${ing.unit.toLowerCase()}`;
   const isOffer = (ing: AggregatedIngredient) =>
     offerIngredients.some((o) => ing.name.toLowerCase().includes(o.toLowerCase()));
 
-  const unchecked = ingredients.filter((i) => !checked[itemKey(i)] && !isOffer(i));
-  const offerItems = ingredients.filter((i) => !checked[itemKey(i)] && isOffer(i));
-  const checkedItems = ingredients.filter((i) => checked[itemKey(i)]);
-  const allDone = ingredients.length > 0 && unchecked.length === 0 && offerItems.length === 0;
+  const visibleIngredients = recipeFilter
+    ? ingredients.filter((i) => recipeFilter.has(i.id))
+    : ingredients;
+
+  const unchecked = visibleIngredients.filter((i) => !checked[i.id] && !isOffer(i));
+  const offerItems = visibleIngredients.filter((i) => !checked[i.id] && isOffer(i));
+  const checkedItems = visibleIngredients.filter((i) => checked[i.id]);
+
+  // Group-aware progress: a "group" = unique ingredient name.
+  // A group is bought when every row with that name is checked or an offer.
+  const visibleByName = new Map<string, AggregatedIngredient[]>();
+  for (const i of visibleIngredients) {
+    const k = i.name.toLowerCase().trim();
+    const arr = visibleByName.get(k);
+    if (arr) arr.push(i);
+    else visibleByName.set(k, [i]);
+  }
+  const totalGroupCount = visibleByName.size;
+  const boughtGroupCount = Array.from(visibleByName.values()).filter(
+    (rows) => rows.every((r) => checked[r.id] || isOffer(r)),
+  ).length;
+  const allDone = totalGroupCount > 0 && boughtGroupCount === totalGroupCount;
+
+  // Convert checked record to a Set for ShoppingCategoryGroup
+  const checkedIdSet = new Set(
+    Object.keys(checked).filter((id) => checked[id]),
+  );
 
   return (
     <div>
@@ -136,23 +238,54 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
         />
       ) : (
         <>
-          {/* Meals this week */}
-          {meals.length > 0 && (
-            <div className="bg-(--color-surface) border border-(--color-border) rounded-xl px-4 py-3 mb-5 flex flex-wrap gap-2 items-center">
-              <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mr-1">
-                Denne uge:
-              </span>
-              {meals.map((m, i) => (
-                <span key={i} className="text-sm bg-(--color-bg) border border-(--color-border) rounded-lg px-2.5 py-0.5 text-(--color-text)">
-                  {m.emoji} {m.name}
-                </span>
-              ))}
+          {/* Recipe filter card */}
+          {recipeId ? (
+            <div className="bg-(--color-surface) border border-(--color-border) rounded-xl px-4 py-4 mb-5 flex items-center gap-4">
+              {selectedRecipe?.image_url ? (
+                <img
+                  src={selectedRecipe.image_url}
+                  alt=""
+                  className="w-12 h-12 rounded-lg object-cover shrink-0"
+                />
+              ) : (
+                <span className="text-3xl leading-none shrink-0">{selectedRecipe?.emoji ?? "🍽️"}</span>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-(--color-text-muted) m-0">Varer til</p>
+                <p className="text-base font-semibold text-(--color-text) m-0 truncate">
+                  {selectedRecipe?.name ?? "…"}
+                </p>
+                <p className="text-xs text-(--color-text-muted) m-0 mt-0.5">
+                  {boughtGroupCount} / {totalGroupCount} varer købt
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.replace("/shopping-list")}
+                className="shrink-0 text-sm text-(--color-primary) font-medium cursor-pointer hover:underline whitespace-nowrap"
+              >
+                Vis hele ugens liste
+              </button>
             </div>
+          ) : (
+            /* Meals this week */
+            meals.length > 0 && (
+              <div className="bg-(--color-surface) border border-(--color-border) rounded-xl px-4 py-3 mb-5 flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mr-1">
+                  Denne uge:
+                </span>
+                {meals.map((m, i) => (
+                  <span key={i} className="text-sm bg-(--color-bg) border border-(--color-border) rounded-lg px-2.5 py-0.5 text-(--color-text)">
+                    {m.emoji} {m.name}
+                  </span>
+                ))}
+              </div>
+            )
           )}
 
           <ShoppingProgress
-            total={ingredients.length}
-            bought={checkedItems.length + offerItems.length}
+            total={totalGroupCount}
+            bought={boughtGroupCount}
             allDone={allDone}
             hasChecked={checkedItems.length > 0}
             onClearChecked={clearChecked}
@@ -164,9 +297,8 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
               key={category}
               category={category}
               items={items}
-              checked={checked}
+              checked={checkedIdSet}
               offerIngredients={offerIngredients}
-              itemKey={itemKey}
               onToggle={toggleChecked}
             />
           ))}
@@ -176,12 +308,12 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
             <div className="bg-(--color-surface) rounded-xl overflow-hidden border border-(--color-border) shadow-sm mb-4 opacity-75">
               {offerItems.map((ing, i) => (
                 <ShoppingItemRow
-                  key={itemKey(ing)}
+                  key={ing.id}
                   ingredient={ing}
                   checked={false}
                   isOffer={true}
                   isLast={i === offerItems.length - 1}
-                  onToggle={() => toggleChecked(itemKey(ing))}
+                  onToggle={() => toggleChecked([ing.id])}
                 />
               ))}
             </div>
@@ -192,12 +324,12 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
             <div className="bg-(--color-surface) rounded-xl overflow-hidden border border-(--color-border) opacity-60">
               {checkedItems.map((ing, i) => (
                 <ShoppingItemRow
-                  key={itemKey(ing)}
+                  key={ing.id}
                   ingredient={ing}
                   checked={true}
                   isOffer={false}
                   isLast={i === checkedItems.length - 1}
-                  onToggle={() => toggleChecked(itemKey(ing))}
+                  onToggle={() => toggleChecked([ing.id])}
                 />
               ))}
             </div>

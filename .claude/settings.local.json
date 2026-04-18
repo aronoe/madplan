@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; Madplan-RecipeImporter/1.0\\)\" \"https://www.valdemarsro.dk/pasta-alfredo/\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; Madplan-RecipeImporter/1.0\\)\" \"https://www.valdemarsro.dk/hoisin-kylling/\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; Madplan-RecipeImporter/1.0\\)\" \"https://www.arla.dk/opskrifter/pasta-carbonara/\")"
     ]
   }
 }

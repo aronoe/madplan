@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import ShoppingListClient from "./ShoppingListClient";
 
@@ -7,5 +8,9 @@ export default async function ShoppingListPage() {
   const { data: userData } = await supabase
     .from("users").select("family_id").eq("id", user!.id).single();
 
-  return <ShoppingListClient familyId={userData!.family_id} />;
+  return (
+    <Suspense>
+      <ShoppingListClient familyId={userData!.family_id} />
+    </Suspense>
+  );
 }

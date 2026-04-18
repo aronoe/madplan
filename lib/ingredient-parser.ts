@@ -47,6 +47,13 @@ function computeNormalizedName(name: string): string {
     .trim();
 }
 
+const COUNTABLE_NAMES = new Set([
+  "æg", "løg", "rødløg", "banan", "bananer", "citron", "citroner",
+  "lime", "limer", "avocado", "avocadoer", "gulerod", "gulerødder",
+  "kartoffel", "kartofler", "tomat", "tomater", "peberfrugt", "peberfrugter",
+  "fed", "hvidløgsfed",
+]);
+
 export function parseIngredientLine(line: string): ParsedIngredient {
   const original = line.trim();
   if (!original) {
@@ -116,13 +123,15 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   if (noUnitMatch) {
     const amount = noUnitMatch[1];
     const name = noUnitMatch[2].trim();
+    const normalized = computeNormalizedName(name);
+    const isCountable = COUNTABLE_NAMES.has(normalized);
     return {
       original,
       name,
-      normalized_name: computeNormalizedName(name),
+      normalized_name: normalized,
       amount,
-      unit: "",
-      confidence: "medium",
+      unit: isCountable ? "stk" : "",
+      confidence: isCountable ? "high" : "medium",
     };
   }
 

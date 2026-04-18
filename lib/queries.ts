@@ -143,6 +143,9 @@ export async function updateRecipe(
     servings: number | null;
     notes: string | null;
     image_url: string | null;
+    is_favorite: boolean;
+    queue_for_next_plan: boolean;
+    queue_order: number | null;
   }>,
   familyId?: string,
 ) {
@@ -296,6 +299,47 @@ export async function searchIngredients(
   return names;
 }
 
+export async function getQueuedRecipes(familyId: string): Promise<Recipe[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("recipes")
+    .select("*")
+    .eq("family_id", familyId)
+    .eq("queue_for_next_plan", true)
+    .order("queue_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Recipe[];
+}
+
+export async function setQueueOrder(
+  updates: { id: string; queue_order: number }[],
+): Promise<void> {
+  await Promise.all(
+    updates.map(({ id, queue_order }) => updateRecipe(id, { queue_order })),
+  );
+}
+
+export async function getMealPlanSummaries(
+  familyId: string,
+  weekStarts: string[],
+): Promise<Record<string, number>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .select("week_start")
+    .eq("family_id", familyId)
+    .in("week_start", weekStarts)
+    .not("recipe_id", "is", null);
+  if (error) throw error;
+  const result: Record<string, number> = {};
+  for (const ws of weekStarts) result[ws] = 0;
+  for (const row of (data ?? []) as { week_start: string }[]) {
+    result[row.week_start] = (result[row.week_start] ?? 0) + 1;
+  }
+  return result;
+}
+
 export async function deleteRecipe(id: string) {
   const supabase = createClient();
   const { error } = await supabase.from("recipes").delete().eq("id", id);
@@ -341,28 +385,60 @@ export async function getIngredientsForRecipe(
   );
 }
 
-export async function addIngredient(
-  recipeId: string,
-  ingredient: { name: string; amount: number; unit: string },
-): Promise<void> {
+// Look up an ingredient by normalised name (case-insensitive).
+// Creates a new row only if nothing matches.
+async function getOrCreateIngredient(name: string): Promise<string> {
   const supabase = createClient();
+  const normalised = name.toLowerCase().replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
 
-  const { data: ing, error: ingError } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from("ingredients")
-    .upsert({ name: ingredient.name }, { onConflict: "name" })
+    .select("id")
+    .ilike("name", normalised)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[getOrCreateIngredient] lookup failed", { name, error: lookupError });
+    throw lookupError;
+  }
+
+  if (existing) return existing.id;
+
+  const { data: created, error: insertError } = await supabase
+    .from("ingredients")
+    .insert({ name })
     .select("id")
     .single();
 
-  if (ingError) throw ingError;
+  if (insertError) {
+    console.error("[getOrCreateIngredient] insert failed", { name, error: insertError });
+    throw insertError;
+  }
 
-  const { error } = await supabase.from("recipe_ingredients").insert({
+  return created.id;
+}
+
+export async function addIngredient(
+  recipeId: string,
+  ingredient: { name: string; amount: number; unit: string; sort_order?: number },
+): Promise<void> {
+  const ingredientId = await getOrCreateIngredient(ingredient.name);
+
+  const supabase = createClient();
+  const payload: Record<string, unknown> = {
     recipe_id: recipeId,
-    ingredient_id: ing.id,
+    ingredient_id: ingredientId,
     amount: ingredient.amount,
     unit: ingredient.unit,
-  });
+  };
+  if (ingredient.sort_order !== undefined) payload.sort_order = ingredient.sort_order;
 
-  if (error) throw error;
+  const { error } = await supabase.from("recipe_ingredients").insert(payload);
+
+  if (error) {
+    console.error("[addIngredient] insert failed", { recipeId, ingredient, error });
+    throw error;
+  }
 }
 
 export async function updateIngredient(

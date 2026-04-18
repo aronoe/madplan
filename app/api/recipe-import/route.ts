@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return Response.json(
       {
         error:
-          "Ingen opskrift fundet på denne side. Siden understøtter muligvis ikke JSON-LD opskriftsdata.",
+          "Ingen opskrift fundet på denne side. Prøv en side med en struktureret opskrift.",
       },
       { status: 422 },
     );

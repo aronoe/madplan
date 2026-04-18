@@ -27,7 +27,7 @@ export default function ShoppingItemRow({
       role="checkbox"
       aria-checked={checked}
       tabIndex={0}
-      onClick={onToggle}
+      onClick={() => { console.log("[shopping] row click", ing.id); onToggle(); }}
       onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(); } }}
       className={cn(
         "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-(--color-surface-2) transition-colors",

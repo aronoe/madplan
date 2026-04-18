@@ -28,6 +28,9 @@ export interface Recipe {
   servings: number | null;
   notes: string | null;
   image_url: string | null;
+  is_favorite: boolean;
+  queue_for_next_plan: boolean;
+  queue_order: number | null;
 }
 
 export interface RecipeStep {

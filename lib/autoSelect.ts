@@ -2,9 +2,8 @@ import type { Recipe } from "@/lib/types";
 
 export type Tempo = "hurtig" | "mix" | "weekend";
 
-// TODO: replace with offer API
 // Returns up to `days` recipes. Never throws — always returns as many as possible.
-// proteinMatches are pre-scored (most ingredient matches first) by getRecipesWithIngredient.
+// Priority: queued → protein matches → favorites-first tempo fill → fallback
 export function autoSelectRecipes(
   proteinMatches: Recipe[],
   allRecipes: Recipe[],
@@ -14,7 +13,24 @@ export function autoSelectRecipes(
   const selected: Recipe[] = [];
   const usedIds = new Set<string>();
 
-  // 1. Prioritize recipes matching selected ingredients (highest score first)
+  // 0. Queued recipes first, sorted by queue_order (nulls last)
+  const queued = allRecipes
+    .filter((r) => r.queue_for_next_plan)
+    .sort((a, b) => {
+      if (a.queue_order === null && b.queue_order === null) return 0;
+      if (a.queue_order === null) return 1;
+      if (b.queue_order === null) return -1;
+      return a.queue_order - b.queue_order;
+    });
+  for (const r of queued) {
+    if (selected.length >= days) break;
+    if (!usedIds.has(r.id)) {
+      selected.push(r);
+      usedIds.add(r.id);
+    }
+  }
+
+  // 1. Protein matches (highest score first, already sorted by caller)
   for (const r of proteinMatches) {
     if (selected.length >= days) break;
     if (!usedIds.has(r.id)) {
@@ -25,10 +41,9 @@ export function autoSelectRecipes(
 
   if (selected.length >= days) return selected;
 
-  // 2. Build fill pool, trying to honour tempo preference
+  // 2. Tempo-filtered fill pool, favorites sorted first within pool
   const shuffled = [...allRecipes].sort(() => Math.random() - 0.5);
 
-  // Attempt tempo-filtered pool first
   let tempoPool: Recipe[] = shuffled;
   if (tempo === "hurtig") {
     tempoPool = shuffled.filter((r) => r.time_minutes <= 30);
@@ -36,8 +51,12 @@ export function autoSelectRecipes(
     tempoPool = shuffled.filter((r) => r.time_minutes >= 45);
   }
 
-  // Fill from tempo pool
-  for (const r of tempoPool) {
+  const sortedTempoPool = [
+    ...tempoPool.filter((r) => r.is_favorite),
+    ...tempoPool.filter((r) => !r.is_favorite),
+  ];
+
+  for (const r of sortedTempoPool) {
     if (selected.length >= days) break;
     if (!usedIds.has(r.id)) {
       selected.push(r);
@@ -45,9 +64,13 @@ export function autoSelectRecipes(
     }
   }
 
-  // 3. Fallback: if tempo pool was insufficient, fill remaining from the full shuffled pool
+  // 3. Fallback: full pool if tempo pool was insufficient
   if (selected.length < days) {
-    for (const r of shuffled) {
+    const sortedFull = [
+      ...shuffled.filter((r) => r.is_favorite),
+      ...shuffled.filter((r) => !r.is_favorite),
+    ];
+    for (const r of sortedFull) {
       if (selected.length >= days) break;
       if (!usedIds.has(r.id)) {
         selected.push(r);

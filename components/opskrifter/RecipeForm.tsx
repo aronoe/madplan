@@ -32,6 +32,9 @@ interface RecipeFormProps {
   error: string;
   onChange: (form: RecipeFormValues) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  hideSubmit?: boolean;
+  // "inline" renders bare fields without the Card/form wrapper — for use inside the auto import flow
+  variant?: "card" | "inline";
 }
 
 const labelClass = "block text-xs font-bold uppercase tracking-wide text-(--color-text-muted) mb-1.5";
@@ -41,8 +44,97 @@ const selectClass = cn(
   "px-3 py-2 text-sm transition-colors",
 );
 
-export default function RecipeForm({ form, saving, error, onChange, onSubmit }: RecipeFormProps) {
+function RecipeFields({
+  form,
+  set,
+}: {
+  form: RecipeFormValues;
+  set: (patch: Partial<RecipeFormValues>) => void;
+}) {
+  return (
+    <>
+      <div className="flex gap-3 items-start">
+        <div>
+          <label className={labelClass}>Emoji</label>
+          <select
+            value={form.emoji}
+            onChange={(e) => set({ emoji: e.target.value })}
+            className={cn(selectClass, "w-17.5 text-center text-xl px-1 py-1.5")}
+          >
+            {EMOJIS.map((em) => <option key={em} value={em}>{em}</option>)}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className={labelClass}>Navn *</label>
+          <Input
+            type="text"
+            placeholder="f.eks. Spaghetti bolognese"
+            value={form.name}
+            onChange={(e) => set({ name: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Tid (min)</label>
+          <Input
+            type="number"
+            min={5}
+            max={300}
+            value={form.time_minutes}
+            onChange={(e) => set({ time_minutes: Number(e.target.value) })}
+            className="w-20"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className={labelClass}>Kategori (valgfrit)</label>
+          <select
+            value={form.category}
+            onChange={(e) => set({ category: e.target.value })}
+            className={selectClass}
+          >
+            <option value="">— Ingen kategori —</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Portioner</label>
+          <Input
+            type="number"
+            min={1}
+            max={20}
+            value={form.servings}
+            onChange={(e) => set({ servings: Number(e.target.value) })}
+            className="w-20"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Tags (kommasepareret, valgfrit)</label>
+        <Input
+          type="text"
+          placeholder="f.eks. pasta, nem, vegetar"
+          value={form.tags}
+          onChange={(e) => set({ tags: e.target.value })}
+        />
+      </div>
+    </>
+  );
+}
+
+export default function RecipeForm({ form, saving, error, onChange, onSubmit, hideSubmit, variant = "card" }: RecipeFormProps) {
   const set = (patch: Partial<RecipeFormValues>) => onChange({ ...form, ...patch });
+
+  if (variant === "inline") {
+    return (
+      <div className="flex flex-col gap-4">
+        <RecipeFields form={form} set={set} />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="mb-6">
@@ -51,88 +143,15 @@ export default function RecipeForm({ form, saving, error, onChange, onSubmit }: 
           Tilføj opskrift
         </div>
 
-        <div className="flex gap-3 items-start">
-          {/* Emoji */}
-          <div>
-            <label className={labelClass}>Emoji</label>
-            <select
-              value={form.emoji}
-              onChange={(e) => set({ emoji: e.target.value })}
-              className={cn(selectClass, "w-17.5 text-center text-xl px-1 py-1.5")}
-            >
-              {EMOJIS.map((em) => <option key={em} value={em}>{em}</option>)}
-            </select>
-          </div>
+        <RecipeFields form={form} set={set} />
 
-          {/* Name */}
-          <div className="flex-1">
-            <label className={labelClass}>Navn *</label>
-            <Input
-              type="text"
-              placeholder="f.eks. Spaghetti bolognese"
-              value={form.name}
-              onChange={(e) => set({ name: e.target.value })}
-              required
-            />
-          </div>
+        {!hideSubmit && error && <div className="text-(--color-danger) text-sm">{error}</div>}
 
-          {/* Time */}
-          <div>
-            <label className={labelClass}>Tid (min)</label>
-            <Input
-              type="number"
-              min={5}
-              max={300}
-              value={form.time_minutes}
-              onChange={(e) => set({ time_minutes: Number(e.target.value) })}
-              className="w-20"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          {/* Category */}
-          <div className="flex-1">
-            <label className={labelClass}>Kategori (valgfrit)</label>
-            <select
-              value={form.category}
-              onChange={(e) => set({ category: e.target.value })}
-              className={selectClass}
-            >
-              <option value="">— Ingen kategori —</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          {/* Servings */}
-          <div>
-            <label className={labelClass}>Portioner</label>
-            <Input
-              type="number"
-              min={1}
-              max={20}
-              value={form.servings}
-              onChange={(e) => set({ servings: Number(e.target.value) })}
-              className="w-20"
-            />
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div>
-          <label className={labelClass}>Tags (kommasepareret, valgfrit)</label>
-          <Input
-            type="text"
-            placeholder="f.eks. pasta, nem, vegetar"
-            value={form.tags}
-            onChange={(e) => set({ tags: e.target.value })}
-          />
-        </div>
-
-        {error && <div className="text-(--color-danger) text-sm">{error}</div>}
-
-        <Button type="submit" disabled={saving || !form.name.trim()} className="self-start">
-          {saving ? "Gemmer…" : "Tilføj opskrift"}
-        </Button>
+        {!hideSubmit && (
+          <Button type="submit" disabled={saving || !form.name.trim()} className="self-start">
+            {saving ? "Gemmer…" : "Tilføj opskrift"}
+          </Button>
+        )}
       </Card>
     </form>
   );

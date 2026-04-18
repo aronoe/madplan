@@ -10,6 +10,7 @@ import {
   clearWeekMeals,
   getWeekStart,
   searchIngredients,
+  updateRecipe,
 } from "@/lib/queries";
 import { autoSelectRecipes, type Tempo } from "@/lib/autoSelect";
 import type { Recipe } from "@/lib/types";
@@ -195,12 +196,20 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
       } else {
         localStorage.removeItem("offerIngredients");
       }
-      // Clear every day for this week before re-saving so stale entries are removed
       await clearWeekMeals(familyId, weekStart);
       const dayEntries = buildSavePlan(editedPlan);
       for (const { dayOfWeek, recipeId } of dayEntries) {
         await setMeal(familyId, weekStart, dayOfWeek, recipeId);
       }
+      // Reset queue flags for queued recipes that were used in the plan
+      const queuedUsed = (editedPlan.filter(Boolean) as Recipe[]).filter(
+        (r) => r.queue_for_next_plan,
+      );
+      await Promise.all(
+        queuedUsed.map((r) =>
+          updateRecipe(r.id, { queue_for_next_plan: false, queue_order: null }),
+        ),
+      );
       router.push("/madplan");
     } catch (err: unknown) {
       setError(

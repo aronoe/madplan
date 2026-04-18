@@ -10,93 +10,36 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
 import {
   clearMeal,
   getIngredientsForMealPlan,
   getMealPlan,
   getRecipes,
   getWeekStart,
+  addWeeks,
   setMeal,
 } from "@/lib/queries";
 import type { Recipe, WeekMeals } from "@/lib/types";
 import RecipePicker from "@/components/RecipePicker";
 import SelectedDayMealCard from "@/components/SelectedDayMealCard";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { UtensilsCrossed, ShoppingCart, Sparkles, X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { UtensilsCrossed, ShoppingCart, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
-// ── Draggable recipe card ─────────────────────────────────────────────────────
-
-function RecipeKort({
-  recipe,
-  dragId,
-  compact = false,
-  imageUrl,
-}: {
-  recipe: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes">;
-  dragId: string;
-  compact?: boolean;
-  imageUrl?: string | null;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: dragId });
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        transform: [
-          transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : null,
-          !isDragging && hovered ? "scale(1.02)" : "scale(1)",
-        ]
-          .filter(Boolean)
-          .join(" "),
-      }}
-      className={cn(
-        "border border-(--color-border) rounded-lg flex items-center gap-2 cursor-grab select-none transition-[box-shadow,transform] duration-150",
-        compact ? "px-2.5 py-1.5" : "px-3 py-2",
-        isDragging
-          ? "bg-(--color-surface) opacity-40 shadow-none"
-          : hovered
-          ? "bg-(--color-surface) shadow-md"
-          : "bg-(--color-surface) shadow-sm",
-      )}
-    >
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          className={cn("rounded object-cover shrink-0", compact ? "w-6 h-6" : "w-7 h-7")}
-        />
-      ) : (
-        <span className={compact ? "text-[18px]" : "text-[20px]"}>{recipe.emoji}</span>
-      )}
-      <span
-        className={cn(
-          "font-semibold text-(--color-primary-text) overflow-hidden text-ellipsis whitespace-nowrap",
-          compact ? "text-[13px]" : "text-[14px]",
-        )}
-      >
-        {recipe.name}
-      </span>
-      {!compact && (
-        <span className="text-xs text-(--color-primary-hover) ml-auto shrink-0">
-          {recipe.time_minutes} min
-        </span>
-      )}
-    </div>
-  );
+// ISO 8601 week number — no external dependency needed.
+function getISOWeek(date: Date): number {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  // Move to Thursday of same week; Thursday determines the year/week.
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
-// ── Droppable day slot ────────────────────────────────────────────────────────
+// ── Droppable day slot (view-only) ───────────────────────────────────────────
 
 function DagSlot({
   dayIndex,
@@ -104,14 +47,12 @@ function DagSlot({
   imageUrl,
   isSelected,
   onSelect,
-  onClear,
 }: {
   dayIndex: number;
   meal: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes"> | null;
   imageUrl?: string | null;
   isSelected: boolean;
   onSelect: () => void;
-  onClear: () => void;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `slot-${dayIndex}` });
 
@@ -129,7 +70,7 @@ function DagSlot({
         ref={setNodeRef}
         onClick={onSelect}
         className={cn(
-          "min-h-20 rounded-xl p-2 flex flex-col justify-center transition-[border-color,background,box-shadow] duration-150 relative cursor-pointer",
+          "min-h-20 rounded-xl p-2 flex flex-col justify-center transition-[border-color,background,box-shadow] duration-150 cursor-pointer",
           isSelected
             ? "border-2 border-solid border-(--color-primary) bg-(--color-primary-subtle) shadow-sm"
             : isOver
@@ -140,25 +81,19 @@ function DagSlot({
         )}
       >
         {meal ? (
-          <>
-            <RecipeKort recipe={meal} dragId={`day-${dayIndex}`} compact imageUrl={imageUrl} />
-            <button
-              onClick={(e) => { e.stopPropagation(); onClear(); }}
-              className="absolute top-1 right-1 w-5 h-5 rounded-full border-none bg-(--color-active-bg) text-(--color-primary-hover) cursor-pointer text-xs flex items-center justify-center leading-none p-0"
-              title="Fjern ret"
-            >
-              <X size={14} />
-            </button>
-          </>
-        ) : (
-          <div
-            className={cn(
-              "flex flex-col items-center gap-1",
-              isSelected ? "text-(--color-primary)" : "text-(--color-text-muted)",
+          <div className="flex items-center gap-1.5 px-1 py-0.5">
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+            ) : (
+              <span className="text-[16px] shrink-0">{meal.emoji}</span>
             )}
-          >
-            <Plus size={16} />
-            <span className="text-[11px] font-medium text-center">Tilføj ret</span>
+            <span className="text-[13px] font-semibold text-(--color-primary-text) overflow-hidden text-ellipsis whitespace-nowrap leading-snug">
+              {meal.name}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-1">
+            <span className="text-[11px] text-(--color-text-muted) select-none">–</span>
           </div>
         )}
       </div>
@@ -186,15 +121,15 @@ function DragOverlayKort({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function MadplanUge({ familyId }: { familyId: string }) {
-  const router = useRouter();
-  const [weekOffset, setWeekOffset] = useState(0);
+export default function MadplanUge({ familyId, initialWeekStart }: { familyId: string; initialWeekStart?: string }) {
+  const [weekStart, setWeekStart] = useState(initialWeekStart ?? getWeekStart(0));
   const [meals, setMeals] = useState<WeekMeals>({});
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [ingredientCount, setIngredientCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0); // increment to force a re-fetch
+  const [nextWeekPlanned, setNextWeekPlanned] = useState<boolean | null>(null);
 
   const [activeRecipe, setActiveRecipe] = useState<Pick<
     Recipe,
@@ -206,7 +141,6 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
   // Picker: opens recipe selector for a specific day (add or replace)
   const [pickerForDay, setPickerForDay] = useState<number | null>(null);
 
-  const weekStart = getWeekStart(weekOffset);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -306,9 +240,16 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
     );
   }
 
-  const monday = new Date(weekStart);
-  const sunday = new Date(weekStart);
-  sunday.setDate(monday.getDate() + 6);
+  // Check whether the next week (relative to the viewed week) already has a plan.
+  useEffect(() => {
+    getMealPlan(familyId, addWeeks(weekStart, 1))
+      .then((plan) => setNextWeekPlanned((plan ?? []).length > 0))
+      .catch(() => setNextWeekPlanned(null));
+  }, [familyId, weekStart]);
+
+  const [wy, wm, wd] = weekStart.split("-").map(Number);
+  const monday = new Date(wy, wm - 1, wd);
+  const sunday = new Date(wy, wm - 1, wd + 6);
   const fmt = (d: Date) => d.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
   const weekLabel = `${fmt(monday)} – ${fmt(sunday)}`;
 
@@ -320,20 +261,20 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-(--color-primary-text) text-[26px] font-extrabold m-0">
-          Ugens aftensmad
+          Uge {getISOWeek(monday)}
         </h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => setWeekOffset((o) => o - 1)} className={navBtnClass}>
+          <button onClick={() => setWeekStart((w) => addWeeks(w, -1))} className={navBtnClass}>
             <ChevronLeft size={18} /> Forrige
           </button>
           <span className="text-sm font-semibold text-(--color-text-mid) min-w-[140px] text-center">
             {weekLabel}
           </span>
-          <button onClick={() => setWeekOffset((o) => o + 1)} className={navBtnClass}>
+          <button onClick={() => setWeekStart((w) => addWeeks(w, 1))} className={navBtnClass}>
             Næste <ChevronRight size={18} />
           </button>
-          {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} className={cn(navBtnClass, "text-(--color-primary)")}>
+          {weekStart !== getWeekStart(0) && (
+            <button onClick={() => setWeekStart(getWeekStart(0))} className={cn(navBtnClass, "text-(--color-primary)")}>
               I dag
             </button>
           )}
@@ -363,12 +304,23 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Quick link to auto-planner — ghost */}
+        {/* Next-week planner CTA — highlighted when next week is unplanned */}
         <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-(--color-text-muted) hover:text-(--color-text) rounded-lg px-3 py-1.5 font-semibold text-sm no-underline whitespace-nowrap transition-colors"
+          href={`/?week=${addWeeks(weekStart, 1)}`}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-sm no-underline whitespace-nowrap transition-colors",
+            nextWeekPlanned === false
+              ? "bg-(--color-primary-subtle) text-(--color-primary-text) border border-(--color-primary)/30 hover:border-(--color-primary)/60"
+              : "text-(--color-text-muted) hover:text-(--color-text)",
+          )}
         >
-          <Sparkles size={14} /> Planlæg uge
+          <Sparkles size={14} />
+          Planlæg næste uge
+          {nextWeekPlanned === false && (
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-(--color-primary)/15 text-(--color-primary) rounded-full px-1.5 py-0.5 leading-none">
+              Mangler
+            </span>
+          )}
         </Link>
 
         {/* Shopping list CTA */}
@@ -408,7 +360,6 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
                 imageUrl={meals[i] ? (recipes.find((r) => r.id === meals[i]!.id)?.image_url ?? null) : null}
                 isSelected={selectedDay === i}
                 onSelect={() => setSelectedDay(i)}
-                onClear={() => handleClear(i)}
               />
             ))}
           </div>
@@ -432,7 +383,9 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
       {/* ── Selected day detail card ───────────────────────────────────────── */}
       {selectedDay !== null && (
         <SelectedDayMealCard
+          familyId={familyId}
           dayIndex={selectedDay}
+          weekStart={weekStart}
           meal={meals[selectedDay] ?? null}
           fullRecipe={
             meals[selectedDay]
@@ -444,7 +397,6 @@ export default function MadplanUge({ familyId }: { familyId: string }) {
             // Keep the day selected so user sees the empty state
           }}
           onSwitch={() => setPickerForDay(selectedDay)}
-          onViewRecipe={() => router.push("/opskrifter")}
         />
       )}
 

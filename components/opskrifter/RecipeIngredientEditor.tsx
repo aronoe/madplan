@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   addIngredient,
   deleteIngredient,
@@ -8,7 +8,6 @@ import {
   updateIngredient,
 } from "@/lib/queries";
 import type { RecipeIngredient } from "@/lib/types";
-import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Pencil, Check, X, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -20,20 +19,29 @@ const iconBtnClass = cn(
   "text-(--color-text-muted) hover:bg-(--color-surface-2) hover:text-(--color-text) transition-colors",
 );
 
-export default function RecipeIngredientEditor({ recipeId }: { recipeId: string }) {
-  const [ingredients, setIngredients] = useState<RecipeIngredient[] | null>(null);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  recipeId: string;
+  /** Data already loaded by the parent — no fetch on mount. */
+  initialIngredients: RecipeIngredient[];
+  onIngredientsChange?: (ingredients: RecipeIngredient[]) => void;
+}
+
+export default function RecipeIngredientEditor({
+  recipeId,
+  initialIngredients,
+  onIngredientsChange,
+}: Props) {
+  // Initialised from parent-provided data — no fetch needed.
+  const [ingredients, setIngredients] = useState<RecipeIngredient[]>(initialIngredients);
   const [addForm, setAddForm] = useState(DEFAULT_ING);
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(DEFAULT_ING);
 
-  useEffect(() => {
-    getIngredientsForRecipe(recipeId)
-      .then(setIngredients)
-      .catch(() => setIngredients([]))
-      .finally(() => setLoading(false));
-  }, [recipeId]);
+  function notify(updated: RecipeIngredient[]) {
+    setIngredients(updated);
+    onIngredientsChange?.(updated);
+  }
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,7 +53,9 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
         amount: Number(addForm.amount),
         unit: addForm.unit.trim(),
       });
-      setIngredients(await getIngredientsForRecipe(recipeId));
+      // Refetch after add to get the server-assigned id and sort_order.
+      const updated = await getIngredientsForRecipe(recipeId);
+      notify(updated);
       setAddForm(DEFAULT_ING);
     } finally {
       setAdding(false);
@@ -63,39 +73,31 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
       amount: Number(editForm.amount),
       unit: editForm.unit.trim(),
     });
-    setIngredients((prev) =>
-      (prev ?? []).map((i) =>
-        i.id === id ? { ...i, ...editForm, amount: Number(editForm.amount) } : i,
-      ),
+    const updated = ingredients.map((i) =>
+      i.id === id ? { ...i, ...editForm, amount: Number(editForm.amount) } : i,
     );
+    notify(updated);
     setEditId(null);
   }
 
   async function handleDelete(id: string) {
-    setIngredients((prev) => (prev ?? []).filter((i) => i.id !== id));
+    const updated = ingredients.filter((i) => i.id !== id);
+    notify(updated);
     await deleteIngredient(id);
   }
 
-  if (loading) {
-    return (
-      <div className="py-2.5 text-(--color-text-muted) text-xs">
-        Henter ingredienser…
-      </div>
-    );
-  }
-
   return (
-    <div className="border-t border-(--color-border) mt-2.5 pt-3">
+    <div className="border-t border-(--color-border) mt-2.5 pt-1">
       {/* Ingredient list */}
-      {(ingredients ?? []).length === 0 ? (
-        <div className="text-(--color-text-muted) text-xs mb-2.5">
+      {ingredients.length === 0 ? (
+        <div className="text-(--color-text-muted) text-xs py-2.5">
           Ingen ingredienser endnu.
         </div>
       ) : (
-        <div className="flex flex-col gap-1 mb-3">
-          {(ingredients ?? []).map((ing) =>
+        <div className="flex flex-col mb-1">
+          {ingredients.map((ing) =>
             editId === ing.id ? (
-              <div key={ing.id} className="flex gap-1.5 items-center">
+              <div key={ing.id} className="flex gap-1.5 items-center py-2 border-b border-(--color-border)/50">
                 <Input compact value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="flex-1" placeholder="Navn" />
                 <Input compact type="number" min={0} step="any" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))} className="w-17.5" />
                 <Input compact value={editForm.unit} onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))} className="w-17.5" placeholder="Enhed" />
@@ -103,9 +105,9 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
                 <button type="button" onClick={() => setEditId(null)} className={iconBtnClass} title="Annuller" aria-label="Annuller"><X size={12} /></button>
               </div>
             ) : (
-              <div key={ing.id} className="flex items-center gap-2 py-1.5 border-b border-(--color-border)/50">
+              <div key={ing.id} className="flex items-center gap-2 py-2.5 border-b border-(--color-border)/50">
                 <span className="flex-1 text-sm text-(--color-text)">{ing.name}</span>
-                <span className="text-sm text-(--color-text-muted) whitespace-nowrap">
+                <span className="text-sm text-(--color-text-muted) tabular-nums whitespace-nowrap">
                   {ing.amount % 1 === 0 ? ing.amount : ing.amount.toFixed(1)} {ing.unit}
                 </span>
                 <button type="button" onClick={() => startEdit(ing)} className={iconBtnClass} title="Rediger" aria-label="Rediger"><Pencil size={12} /></button>
@@ -116,14 +118,19 @@ export default function RecipeIngredientEditor({ recipeId }: { recipeId: string 
         </div>
       )}
 
-      {/* Add form */}
-      <form onSubmit={handleAdd} className="flex gap-1.5 items-center flex-wrap">
-        <Input compact placeholder="Ingrediens" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="flex-1 min-w-30" required />
-        <Input compact type="number" min={0} step="any" placeholder="Mængde" value={addForm.amount} onChange={(e) => setAddForm((f) => ({ ...f, amount: Number(e.target.value) }))} className="w-20" />
-        <Input compact placeholder="Enhed" value={addForm.unit} onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))} className="w-20" />
-        <Button type="submit" size="sm" disabled={adding || !addForm.name.trim()}>
-          {adding ? "…" : <><Plus size={12} /> Tilføj</>}
-        </Button>
+      {/* Add row */}
+      <form onSubmit={handleAdd} className="flex gap-1.5 items-center pt-2.5">
+        <Input compact placeholder="Ingrediens" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="flex-1" required />
+        <Input compact type="number" min={0} step="any" placeholder="Mængde" value={addForm.amount} onChange={(e) => setAddForm((f) => ({ ...f, amount: Number(e.target.value) }))} className="w-18" />
+        <Input compact placeholder="Enhed" value={addForm.unit} onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))} className="w-18" />
+        <button
+          type="submit"
+          disabled={adding || !addForm.name.trim()}
+          className="inline-flex items-center gap-1 shrink-0 rounded-lg px-3 py-1 text-sm font-semibold bg-(--color-primary) text-white cursor-pointer hover:bg-(--color-primary-hover) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Plus size={13} />
+          {adding ? "…" : "Tilføj"}
+        </button>
       </form>
     </div>
   );
