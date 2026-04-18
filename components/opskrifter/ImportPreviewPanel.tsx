@@ -11,12 +11,17 @@ interface Props {
   onChange(rows: ParsedIngredient[]): void;
 }
 
-// A row is blocking-invalid if: amount is non-empty but won't parse, OR
-// confidence is low (range) and amount is still empty (user hasn't fixed it).
+// Only block save when amount is explicitly set to something that can't parse.
+// Empty amount is allowed (saved as 0 — covers "salt", "peber" etc.).
 function isBlocking(row: ParsedIngredient): boolean {
-  if (row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")))) return true;
-  if (row.confidence === "low" && row.amount === "") return true;
-  return false;
+  return row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")));
+}
+
+// Inline hint shown below a row to guide correction without blocking.
+function rowHint(row: ParsedIngredient): string | null {
+  if (row.confidence === "low" && row.amount === "") return "mangler mængde";
+  if (row.confidence === "medium" && row.amount !== "" && row.unit === "") return "ukendt enhed";
+  return null;
 }
 
 const inputClass =
@@ -51,7 +56,7 @@ export default function ImportPreviewPanel({
         />
       )}
 
-      {/* Warning banner */}
+      {/* Warning / info banner */}
       {nonHighCount > 0 && (
         <div
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${
@@ -89,46 +94,51 @@ export default function ImportPreviewPanel({
           </div>
 
           {/* Rows */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             {ingredients.map((row, i) => {
               const blocking = isBlocking(row);
               const warn = !blocking && row.confidence !== "high";
+              const hint = rowHint(row);
               return (
-                <div
-                  key={i}
-                  className={`grid grid-cols-[72px_72px_1fr] gap-1.5 rounded-lg px-1 py-0.5 ${
-                    blocking
-                      ? "bg-red-50 border border-red-200"
-                      : warn
-                      ? "bg-amber-50/60 border border-amber-100"
-                      : "border border-transparent"
-                  }`}
-                >
-                  <input
-                    type="text"
-                    value={row.amount}
-                    onChange={(e) => updateRow(i, { amount: e.target.value })}
-                    placeholder="—"
-                    className={inputClass}
-                    aria-label="Mængde"
-                  />
-                  <input
-                    type="text"
-                    value={row.unit}
-                    onChange={(e) => updateRow(i, { unit: e.target.value })}
-                    placeholder="—"
-                    className={inputClass}
-                    aria-label="Enhed"
-                  />
-                  <input
-                    type="text"
-                    value={row.name}
-                    onChange={(e) => updateRow(i, { name: e.target.value })}
-                    placeholder="Ingrediens"
-                    required
-                    className={inputClass}
-                    aria-label="Ingrediens"
-                  />
+                <div key={i} className="flex flex-col gap-0.5">
+                  <div
+                    className={`grid grid-cols-[72px_72px_1fr] gap-1.5 rounded-lg px-1 py-0.5 ${
+                      blocking
+                        ? "bg-red-50 border border-red-200"
+                        : warn
+                        ? "bg-amber-50/60 border border-amber-100"
+                        : "border border-transparent"
+                    }`}
+                  >
+                    <input
+                      type="text"
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, { amount: e.target.value })}
+                      placeholder="—"
+                      className={inputClass}
+                      aria-label="Mængde"
+                    />
+                    <input
+                      type="text"
+                      value={row.unit}
+                      onChange={(e) => updateRow(i, { unit: e.target.value })}
+                      placeholder="—"
+                      className={inputClass}
+                      aria-label="Enhed"
+                    />
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateRow(i, { name: e.target.value })}
+                      placeholder="Ingrediens"
+                      required
+                      className={inputClass}
+                      aria-label="Ingrediens"
+                    />
+                  </div>
+                  {hint && (
+                    <p className="text-[11px] text-amber-600 pl-1.5">{hint}</p>
+                  )}
                 </div>
               );
             })}

@@ -21,12 +21,10 @@ import ImportPreviewPanel from "@/components/opskrifter/ImportPreviewPanel";
 import SectionHeader from "@/components/ui/SectionHeader";
 import { Plus, ChevronUp } from "lucide-react";
 
-// A row blocks saving when: amount is non-empty but unparseable, or confidence
-// is "low" with no amount entered yet (e.g. an unresolved range like "2-3").
+// Only block saving if the amount field contains text that can't be parsed as
+// a number. Empty amount is valid (stored as 0 — covers "salt", ranges, etc.).
 function isBlockingRow(row: ParsedIngredient): boolean {
-  if (row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")))) return true;
-  if (row.confidence === "low" && row.amount === "") return true;
-  return false;
+  return row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")));
 }
 
 export default function OpskrifterKlient({
@@ -93,7 +91,7 @@ export default function OpskrifterKlient({
       const blockingRows = parsedIngredients.filter(isBlockingRow);
       if (blockingRows.length > 0) {
         setError(
-          `Ret ${blockingRows.length} ${blockingRows.length === 1 ? "ingrediens" : "ingredienser"} markeret med rød advarsel, og prøv igen.`,
+          `${blockingRows.length} ${blockingRows.length === 1 ? "ingrediens har" : "ingredienser har"} en ugyldig mængde — ret feltet og prøv igen.`,
         );
         return;
       }
