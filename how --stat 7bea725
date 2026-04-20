@@ -1,0 +1,20 @@
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m HEAD@{Sat Apr 18 23:13:57 2026}: checkout: moving from main to main
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m refs/remotes/origin/main@{Sat Apr 18 23:12:15 2026}: update by push
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m refs/heads/main@{Sat Apr 18 23:12:09 2026}: merge feature/ingredient-status-and-steps: Fast-forward
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m HEAD@{Sat Apr 18 23:12:09 2026}: merge feature/ingredient-status-and-steps: Fast-forward
+[33m02986aa[m HEAD@{Sat Apr 18 23:12:03 2026}: checkout: moving from feature/ingredient-status-and-steps to main
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m refs/heads/feature/ingredient-status-and-steps@{Sat Apr 18 22:53:09 2026}: commit: Prepare app for Vercel deploy
+[33m7bea725[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mfeature/ingredient-status-and-steps[m[33m)[m HEAD@{Sat Apr 18 22:53:09 2026}: commit: Prepare app for Vercel deploy
+[33m3c7bc92[m refs/heads/feature/ingredient-status-and-steps@{Sat Apr 18 14:49:33 2026}: commit: Improve ingredient parser: extended units, til-suffix normalization, confidence logic, inline hints
+[33m3c7bc92[m HEAD@{Sat Apr 18 14:49:33 2026}: commit: Improve ingredient parser: extended units, til-suffix normalization, confidence logic, inline hints
+[33m063fe3f[m refs/heads/feature/ingredient-status-and-steps@{Sat Apr 18 14:39:08 2026}: commit: Add recipe import from URL (JSON-LD, structured ingredient parsing, review UI)
+[33m063fe3f[m HEAD@{Sat Apr 18 14:39:08 2026}: commit: Add recipe import from URL (JSON-LD, structured ingredient parsing, review UI)
+[33m1e73f9e[m refs/heads/feature/ingredient-status-and-steps@{Sat Apr 18 14:31:19 2026}: commit: Fix recipe import spec: ingredient name, amount validation, image_url, normalized_name scope
+[33m1e73f9e[m HEAD@{Sat Apr 18 14:31:19 2026}: commit: Fix recipe import spec: ingredient name, amount validation, image_url, normalized_name scope
+[33mde4f794[m refs/heads/feature/ingredient-status-and-steps@{Sat Apr 18 14:27:55 2026}: commit: Add recipe import design spec
+[33mde4f794[m HEAD@{Sat Apr 18 14:27:55 2026}: commit: Add recipe import design spec
+[33m02986aa[m refs/heads/feature/ingredient-status-and-steps@{Mon Apr 13 21:17:50 2026}: branch: Created from HEAD
+[33m02986aa[m HEAD@{Mon Apr 13 21:17:50 2026}: checkout: moving from main to feature/ingredient-status-and-steps
+[33m02986aa[m HEAD@{Mon Apr 13 21:17:50 2026}: checkout: moving from main to main
+[33m02986aa[m refs/remotes/origin/main@{Mon Apr 13 21:05:41 2026}: update by push
+[33m02986aa[m refs/heads/main@{Mon Apr 13 21:05:36 2026}: commit: Restore meal plan UI files from feature/ui-redesign

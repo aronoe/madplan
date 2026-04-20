@@ -11,7 +11,7 @@ import { CalendarDays, LayoutList } from "lucide-react";
 type View = "uge" | "oversigt";
 
 const TABS: { value: View; label: string; Icon: typeof CalendarDays }[] = [
-  { value: "uge", label: "Uge", Icon: CalendarDays },
+  { value: "uge", label: "I dag", Icon: CalendarDays },
   { value: "oversigt", label: "Oversigt", Icon: LayoutList },
 ];
 

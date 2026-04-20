@@ -51,15 +51,13 @@ export default function ShoppingItemRow({
       <span
         className={cn(
           "flex-1 text-sm",
-          checked && "line-through text-(--color-text-muted)",
-          !checked && isOffer && "line-through text-(--color-text-muted)",
-          !checked && !isOffer && "font-medium text-(--color-text)",
+          checked ? "line-through text-(--color-text-muted)" : "font-medium text-(--color-text)",
         )}
       >
         {ing.name}
       </span>
 
-      {/* Offer badge */}
+      {/* Offer badge — display only, has no effect on state */}
       {isOffer && !checked && (
         <Badge variant="offer">
           <Tag size={10} className="inline-block mr-1" />
@@ -71,7 +69,7 @@ export default function ShoppingItemRow({
       <span
         className={cn(
           "text-sm font-semibold whitespace-nowrap",
-          checked || isOffer ? "line-through text-(--color-text-muted)" : "text-(--color-text-mid)",
+          checked ? "line-through text-(--color-text-muted)" : "text-(--color-text-mid)",
         )}
       >
         {formatAmount(ing.amount)} {ing.unit}

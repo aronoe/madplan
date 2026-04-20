@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, BookOpen, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/cn";
+import WeekMissingBadge from "./WeekMissingBadge";
 
 const NAV_LINKS = [
   { href: "/madplan",       label: "Madplan",      Icon: CalendarDays },
@@ -26,7 +27,7 @@ export default function AppNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
+              "relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
               active
                 ? "bg-(--color-active-bg) text-(--color-text)"
                 : "text-(--color-text-mid) hover:bg-(--color-surface-2)"
@@ -34,6 +35,7 @@ export default function AppNav() {
           >
             <Icon size={16} />
             <span className="hidden sm:inline">{label}</span>
+            {href === "/shopping-list" && <WeekMissingBadge />}
           </Link>
         );
       })}

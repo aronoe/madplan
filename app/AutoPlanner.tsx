@@ -13,6 +13,7 @@ import {
   updateRecipe,
 } from "@/lib/queries";
 import { autoSelectRecipes, type Tempo } from "@/lib/autoSelect";
+import { invalidateCurrentWeekBadge } from "@/lib/shoppingBadgeStore";
 import type { Recipe } from "@/lib/types";
 import { buildSavePlan } from "@/lib/weekPlan";
 import ChipSelect from "@/components/ChipSelect";
@@ -210,6 +211,7 @@ export default function AutoPlanner({ familyId }: { familyId: string }) {
           updateRecipe(r.id, { queue_for_next_plan: false, queue_order: null }),
         ),
       );
+      invalidateCurrentWeekBadge();
       router.push("/madplan");
     } catch (err: unknown) {
       setError(

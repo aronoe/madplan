@@ -14,6 +14,7 @@ import {
 } from "@/lib/queries";
 import type { AggregatedIngredient } from "@/lib/queries";
 import type { Recipe } from "@/lib/types";
+import { computeMissingGroups, setShoppingBadgeCount } from "@/lib/shoppingBadgeStore";
 import ShoppingHeader from "@/components/shopping/ShoppingHeader";
 import ShoppingProgress from "@/components/shopping/ShoppingProgress";
 import ShoppingCategoryGroup from "@/components/shopping/ShoppingCategoryGroup";
@@ -50,8 +51,14 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recipeId = searchParams.get("recipeId");
+  const weekStartParam = searchParams.get("weekStart");
 
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(() => {
+    if (!weekStartParam) return 0;
+    const target = new Date(weekStartParam.replace(/-/g, "/"));
+    const current = new Date(getWeekStart(0).replace(/-/g, "/"));
+    return Math.round((target.getTime() - current.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  });
   const [ingredients, setIngredients] = useState<AggregatedIngredient[]>([]);
   const [meals, setMeals] = useState<Pick<Recipe, "name" | "emoji">[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,8 +192,7 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
     ? ingredients.filter((i) => recipeFilter.has(i.id))
     : ingredients;
 
-  const unchecked = visibleIngredients.filter((i) => !checked[i.id] && !isOffer(i));
-  const offerItems = visibleIngredients.filter((i) => !checked[i.id] && isOffer(i));
+  const unchecked = visibleIngredients.filter((i) => !checked[i.id]);
   const checkedItems = visibleIngredients.filter((i) => checked[i.id]);
 
   // Group-aware progress: a "group" = unique ingredient name.
@@ -200,9 +206,17 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
   }
   const totalGroupCount = visibleByName.size;
   const boughtGroupCount = Array.from(visibleByName.values()).filter(
-    (rows) => rows.every((r) => checked[r.id] || isOffer(r)),
+    (rows) => rows.every((r) => checked[r.id]),
   ).length;
   const allDone = totalGroupCount > 0 && boughtGroupCount === totalGroupCount;
+
+  // Keep header badge in sync: update whenever checked state or ingredients change.
+  // Only sync for the current week (weekOffset === 0) so navigating past weeks
+  // doesn't corrupt the badge.
+  useEffect(() => {
+    if (weekOffset !== 0 || ingredients.length === 0) return;
+    setShoppingBadgeCount(computeMissingGroups(ingredients, (id) => !!checked[id]));
+  }, [checked, ingredients, weekOffset]);
 
   // Convert checked record to a Set for ShoppingCategoryGroup
   const checkedIdSet = new Set(
@@ -302,22 +316,6 @@ export default function ShoppingListClient({ familyId }: { familyId: string }) {
               onToggle={toggleChecked}
             />
           ))}
-
-          {/* Offer items */}
-          {offerItems.length > 0 && (
-            <div className="bg-(--color-surface) rounded-xl overflow-hidden border border-(--color-border) shadow-sm mb-4 opacity-75">
-              {offerItems.map((ing, i) => (
-                <ShoppingItemRow
-                  key={ing.id}
-                  ingredient={ing}
-                  checked={false}
-                  isOffer={true}
-                  isLast={i === offerItems.length - 1}
-                  onToggle={() => toggleChecked([ing.id])}
-                />
-              ))}
-            </div>
-          )}
 
           {/* Checked items */}
           {checkedItems.length > 0 && (

@@ -1,8 +1,20 @@
+import Link from "next/link";
 import { Salad } from "lucide-react";
 import AppNav from "./AppNav";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import { createClient } from "@/lib/supabase/server";
 
-export default function AppHeader() {
+export default async function AppHeader() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const displayName: string =
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    user?.email ??
+    "";
+  const initial = (displayName.charAt(0) || "U").toUpperCase();
+
   return (
     <header
       className="sticky top-0 z-40 w-full bg-(--color-nav-bg)"
@@ -10,27 +22,28 @@ export default function AppHeader() {
     >
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0 text-(--color-primary) font-bold text-lg">
-          <Salad size={22} />
-          <span>Madplan</span>
-        </div>
+        <Link
+          href="/"
+          className="flex items-center gap-2 shrink-0 text-(--color-primary) font-bold text-lg"
+        >
+          <Salad size={28} />
+        </Link>
 
         {/* Navigation links — client component for active detection */}
         <div className="flex-1">
           <AppNav />
         </div>
 
-        {/* Dark mode + sign out */}
+        {/* Dark mode + profile avatar */}
         <div className="flex items-center gap-2 shrink-0">
           <DarkModeToggle />
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="text-xs text-(--color-text-muted) hover:text-(--color-text) transition-colors px-2 py-1 rounded"
-            >
-              Log ud
-            </button>
-          </form>
+          <Link
+            href="/profile"
+            aria-label="Profil"
+            className="w-8 h-8 rounded-full bg-(--color-primary) text-white flex items-center justify-center text-sm font-bold hover:opacity-85 transition-opacity shrink-0"
+          >
+            {initial}
+          </Link>
         </div>
       </div>
     </header>

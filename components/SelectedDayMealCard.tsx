@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getIngredientsForRecipe, getRecipeSteps, getShoppingChecked } from "@/lib/queries";
+import RecipeImage from "@/components/RecipeImage";
 import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import {
@@ -10,14 +11,14 @@ import {
   UtensilsCrossed,
   FolderOpen,
   BookOpen,
-  ShoppingCart,
-  RefreshCw,
-  Trash2,
   Plus,
   Clock,
+  ChevronDown,
+  ChevronUp,
   CheckSquare,
   Square,
-  X,
+  ListChecks,
+  ShoppingCart,
 } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
@@ -25,7 +26,6 @@ const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "S�
 function formatAmount(n: number) {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
-
 
 type Props = {
   familyId: string;
@@ -35,6 +35,7 @@ type Props = {
   fullRecipe: Recipe | null;
   onClear: () => void;
   onSwitch: () => void;
+  upcomingDays?: Array<{ dayAbbr: string; recipeName: string }>;
 };
 
 export default function SelectedDayMealCard({
@@ -45,15 +46,15 @@ export default function SelectedDayMealCard({
   fullRecipe,
   onClear,
   onSwitch,
+  upcomingDays = [],
 }: Props) {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [loadingIng, setLoadingIng] = useState(false);
   const [steps, setSteps] = useState<RecipeStep[]>([]);
   const [loadingSteps, setLoadingSteps] = useState(false);
   const [doneStepIds, setDoneStepIds] = useState<Set<string>>(new Set());
-  // Set of recipe_ingredient_ids that are checked in the shopping list
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [isCookingMode, setIsCookingMode] = useState(false);
+  const [showRecipe, setShowRecipe] = useState(false);
 
   useEffect(() => {
     getShoppingChecked(familyId, weekStart)
@@ -66,13 +67,13 @@ export default function SelectedDayMealCard({
       setIngredients([]);
       setSteps([]);
       setDoneStepIds(new Set());
-      setIsCookingMode(false);
+      setShowRecipe(false);
       return;
     }
     setLoadingIng(true);
     setLoadingSteps(true);
     setDoneStepIds(new Set());
-    setIsCookingMode(false);
+    setShowRecipe(false);
     getIngredientsForRecipe(meal.id)
       .then(setIngredients)
       .catch(() => setIngredients([]))
@@ -95,9 +96,8 @@ export default function SelectedDayMealCard({
     return !checkedIds.has(ing.id);
   }
 
-  const router = useRouter();
   const recipe = fullRecipe ?? meal;
-  const missingCount = ingredients.filter(isMissing).length;
+  const missingItems = !loadingIng ? ingredients.filter(isMissing) : [];
   const doneCount = doneStepIds.size;
 
   /* ── Empty state ──────────────────────────────────────────────────────────── */
@@ -122,23 +122,17 @@ export default function SelectedDayMealCard({
   return (
     <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl overflow-hidden shadow-sm">
 
-      {/* Hero image or emoji banner */}
-      {fullRecipe?.image_url ? (
-        <img
-          src={fullRecipe.image_url}
-          alt={recipe.name}
-          className="w-full h-48 sm:h-56 object-cover"
-        />
-      ) : (
-        <div className="w-full h-32 bg-(--color-surface-2) flex items-center justify-center">
-          <span className="text-6xl leading-none select-none">{recipe.emoji}</span>
-        </div>
-      )}
+      {/* Hero image */}
+      <RecipeImage
+        imageUrl={fullRecipe?.image_url}
+        name={recipe.name}
+        className="h-40 sm:h-48"
+      />
 
-      {/* ── Header: meta + actions ─────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-5 pt-5 pb-4">
 
-        {/* Eyebrow: day + quick meta */}
+        {/* Eyebrow */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--color-text-muted) mb-2">
           <span className="font-semibold text-(--color-text)">{DAGE[dayIndex]}</span>
           <span>·</span>
@@ -162,9 +156,38 @@ export default function SelectedDayMealCard({
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-(--color-text) leading-snug m-0 mb-3">
+        <h2 className="text-xl font-bold text-(--color-text) leading-snug m-0 mb-1">
           {recipe.name}
         </h2>
+
+        {/* Cooktime estimate */}
+        {meal.time_minutes > 0 && (
+          <p className="text-sm text-(--color-text-muted) m-0 mb-3">
+            Klar om ca. {meal.time_minutes} min
+          </p>
+        )}
+
+        {/* Action bar: shopping status (left) + upcoming days (right) */}
+        {((missingItems.length > 0 && !loadingIng) || upcomingDays.length > 0) && (
+          <div className="flex items-center gap-3 py-2 mb-1 border-t border-gray-100 min-w-0">
+            {missingItems.length > 0 && !loadingIng && (
+              <Link
+                href="/shopping-list"
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 shrink-0"
+              >
+                <ShoppingCart size={13} />
+                {missingItems.length} varer mangler til i dag
+              </Link>
+            )}
+            {upcomingDays.length > 0 && (
+              <span className="text-sm text-gray-400 truncate ml-auto min-w-0">
+                {upcomingDays
+                  .map((d) => `${d.dayAbbr}: ${d.recipeName.length > 25 ? d.recipeName.slice(0, 25) + "…" : d.recipeName}`)
+                  .join(" · ")}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Tags */}
         {(fullRecipe?.tags ?? []).length > 0 && (
@@ -180,80 +203,42 @@ export default function SelectedDayMealCard({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* CTA row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            onClick={() => router.push(`/shopping-list?recipeId=${recipe.id}`)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer border transition-colors",
-              missingCount > 0
-                ? "bg-(--color-danger-subtle) text-(--color-danger) border-(--color-danger)/30 hover:border-(--color-danger)/60"
-                : "bg-(--color-surface-2) text-(--color-text) border-(--color-border) hover:border-(--color-text-muted)",
-            )}
+            onClick={() => setShowRecipe((v) => !v)}
+            className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
           >
-            <ShoppingCart size={14} />
-            Indkøbsliste
-            {missingCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xs font-bold px-1.5 py-0.5 leading-none min-w-5">
-                {missingCount}
-              </span>
-            )}
+            {showRecipe ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {showRecipe ? "Skjul opskrift" : "Se opskrift"}
           </button>
-          {isCookingMode ? (
-            <button
-              type="button"
-              onClick={() => setIsCookingMode(false)}
-              className="inline-flex items-center gap-1.5 text-(--color-text-muted) hover:text-(--color-text) rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors"
+
+          {missingItems.length > 0 && (
+            <Link
+              href={`/shopping-list?recipeId=${recipe.id}`}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold border transition-colors bg-(--color-surface-2) text-(--color-text) border-(--color-text-muted)/50 hover:border-(--color-text-muted)/80 hover:bg-(--color-bg)"
             >
-              <X size={14} /> Luk madlavning
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsCookingMode(true)}
-              className="inline-flex items-center gap-1.5 bg-(--color-surface-2) text-(--color-text) border border-(--color-border) hover:border-(--color-text-muted) rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors"
-            >
-              <UtensilsCrossed size={14} /> Start madlavning
-            </button>
+              <ListChecks size={14} />
+              {missingItems.length} varer på indkøbslisten
+            </Link>
           )}
-          <button
-            onClick={onSwitch}
-            className="inline-flex items-center gap-1.5 text-(--color-text-muted) hover:text-(--color-text) rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors"
-          >
-            <RefreshCw size={14} /> Skift ret
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={onClear}
-            className="inline-flex items-center gap-1.5 text-(--color-danger) hover:bg-(--color-danger-subtle) rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-opacity"
-          >
-            <Trash2 size={14} />
-          </button>
         </div>
 
-        {/* Overview: compact ingredient preview (max 3) */}
-        {!isCookingMode && !loadingIng && ingredients.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1">
-            {ingredients.slice(0, 3).map((ing) => (
-              <span key={ing.id} className="text-sm text-(--color-text-muted)">
-                {ing.name}
-                <span className="ml-1 text-xs opacity-60">
-                  {formatAmount(ing.amount)} {ing.unit}
-                </span>
-              </span>
-            ))}
-            {ingredients.length > 3 && (
-              <span className="text-sm text-(--color-text-muted) italic">
-                + {ingredients.length - 3} mere
-              </span>
+        {/* Inline missing preview */}
+        {missingItems.length > 0 && !loadingIng && (
+          <p className="text-xs text-(--color-text-muted) mt-2 m-0">
+            {missingItems.slice(0, 3).map((i) => i.name).join(" · ")}
+            {missingItems.length > 3 && (
+              <span className="opacity-60"> · +{missingItems.length - 3}</span>
             )}
-          </div>
+          </p>
         )}
+
       </div>
 
-      {/* ── Cooking mode: full ingredients + steps ────────────────────────── */}
-      {isCookingMode && (
+      {/* ── Recipe expand: ingredients + steps ────────────────────────────── */}
+      {showRecipe && (
         <>
           <div className="h-px bg-(--color-border) mx-5" />
 
@@ -261,12 +246,9 @@ export default function SelectedDayMealCard({
 
             {/* Left: Ingredients */}
             <div className="px-5 pt-5 pb-5 sm:border-r border-(--color-border)">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0 mb-1">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0 mb-3">
                 Ingredienser
               </h3>
-              <p className="text-xs text-(--color-text-muted) italic m-0 mb-3">
-                Status opdateres via indkøbslisten
-              </p>
 
               {loadingIng ? (
                 <p className="text-sm text-(--color-text-muted) italic m-0">Henter…</p>
@@ -279,14 +261,13 @@ export default function SelectedDayMealCard({
                     return (
                       <li
                         key={ing.id}
-                        className="flex justify-between items-center text-sm py-2"
+                        className="flex justify-between items-center text-sm py-2 border-b border-(--color-border)/40 last:border-0"
                       >
                         <span className="flex items-center gap-2 min-w-0">
-                          {missing ? (
-                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-(--color-danger) opacity-60" />
-                          ) : (
-                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-(--color-primary) opacity-25" />
-                          )}
+                          <span className={cn(
+                            "w-1.5 h-1.5 shrink-0 rounded-full",
+                            missing ? "bg-(--color-danger) opacity-60" : "bg-(--color-primary) opacity-25",
+                          )} />
                           <span className={cn(
                             "truncate",
                             missing ? "text-(--color-danger) opacity-75" : "text-(--color-text)",
@@ -308,7 +289,7 @@ export default function SelectedDayMealCard({
 
             {/* Right: Steps */}
             <div className="px-5 py-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
                   Fremgangsmåde
                 </h3>
