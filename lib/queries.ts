@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
+import type { Recipe, RecipeIngredient, RecipeStep, StoreOffer } from "@/lib/types";
 import { aggregateIngredients } from "@/lib/ingredientUtils";
 
 export function getWeekStart(offset = 0): string {
@@ -666,4 +666,56 @@ export async function joinFamily(
 
   if (userError) throw userError;
   return family;
+}
+
+// ── Store offers ──────────────────────────────────────────────────────────────
+
+export async function getActiveOffers(): Promise<StoreOffer[]> {
+  const supabase = createClient();
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  const { data, error } = await supabase
+    .from("store_offers")
+    .select("*")
+    .eq("is_active", true)
+    .lte("valid_from", todayStr)
+    .gte("valid_to", todayStr)
+    .order("store")
+    .order("product_name");
+
+  if (error) throw error;
+  return (data ?? []) as StoreOffer[];
+}
+
+// Returns offer match counts per recipe AND a per-ingredient → recipe[] map.
+// Both are computed from a single DB query.
+export async function getRecipeIngredientOverlap(
+  recipeIds: string[],
+  offerIngredientIds: string[],
+): Promise<{
+  counts: Record<string, number>;
+  byIngredient: Record<string, string[]>;
+}> {
+  if (recipeIds.length === 0 || offerIngredientIds.length === 0) {
+    return { counts: {}, byIngredient: {} };
+  }
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("recipe_ingredients")
+    .select("recipe_id, ingredient_id")
+    .in("recipe_id", recipeIds)
+    .in("ingredient_id", offerIngredientIds);
+
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  const byIngredient: Record<string, string[]> = {};
+  for (const row of (data ?? []) as { recipe_id: string; ingredient_id: string }[]) {
+    counts[row.recipe_id] = (counts[row.recipe_id] ?? 0) + 1;
+    (byIngredient[row.ingredient_id] ??= []).push(row.recipe_id);
+  }
+  return { counts, byIngredient };
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { getIngredientsForRecipe, getRecipeSteps, getShoppingChecked } from "@/lib/queries";
+import { getIngredientsForRecipe, getRecipeSteps, getShoppingChecked, setShoppingItemChecked } from "@/lib/queries";
+import { invalidateCurrentWeekBadge } from "@/lib/shoppingBadgeStore";
 import RecipeImage from "@/components/RecipeImage";
-import type { Recipe, RecipeIngredient, RecipeStep } from "@/lib/types";
+import type { Recipe, RecipeIngredient, RecipeStep, StoreOffer } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import {
   PackageOpen,
@@ -19,6 +20,8 @@ import {
   Square,
   ListChecks,
   ShoppingCart,
+  Tag,
+  Check,
 } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
@@ -35,7 +38,7 @@ type Props = {
   fullRecipe: Recipe | null;
   onClear: () => void;
   onSwitch: () => void;
-  upcomingDays?: Array<{ dayAbbr: string; recipeName: string }>;
+  offers?: StoreOffer[];
 };
 
 export default function SelectedDayMealCard({
@@ -46,20 +49,26 @@ export default function SelectedDayMealCard({
   fullRecipe,
   onClear,
   onSwitch,
-  upcomingDays = [],
+  offers = [],
 }: Props) {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [loadingIng, setLoadingIng] = useState(false);
   const [steps, setSteps] = useState<RecipeStep[]>([]);
   const [loadingSteps, setLoadingSteps] = useState(false);
   const [doneStepIds, setDoneStepIds] = useState<Set<string>>(new Set());
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const savingIds = useRef<Set<string>>(new Set());
   const [showRecipe, setShowRecipe] = useState(false);
+  const [ingExpanded, setIngExpanded] = useState(false);
 
   useEffect(() => {
     getShoppingChecked(familyId, weekStart)
-      .then(setCheckedIds)
-      .catch(() => setCheckedIds(new Set()));
+      .then((ids) => {
+        const map: Record<string, boolean> = {};
+        ids.forEach((id) => { map[id] = true; });
+        setChecked(map);
+      })
+      .catch(() => setChecked({}));
   }, [familyId, weekStart]);
 
   useEffect(() => {
@@ -93,12 +102,37 @@ export default function SelectedDayMealCard({
   }
 
   function isMissing(ing: RecipeIngredient): boolean {
-    return !checkedIds.has(ing.id);
+    return !checked[ing.id];
+  }
+
+  function toggleIngredient(id: string) {
+    if (savingIds.current.has(id)) return;
+    const nowChecked = !checked[id];
+    savingIds.current.add(id);
+    setChecked((prev) => ({ ...prev, [id]: nowChecked }));
+    setShoppingItemChecked(familyId, weekStart, id, nowChecked)
+      .then(() => invalidateCurrentWeekBadge())
+      .catch(() => setChecked((prev) => ({ ...prev, [id]: !nowChecked })))
+      .finally(() => savingIds.current.delete(id));
   }
 
   const recipe = fullRecipe ?? meal;
   const missingItems = !loadingIng ? ingredients.filter(isMissing) : [];
   const doneCount = doneStepIds.size;
+
+  const offerIngredientIds = new Set(offers.map((o) => o.ingredient_id).filter(Boolean));
+
+  const matchingOffers = !loadingIng
+    ? offers.filter(
+        (o) => o.ingredient_id && ingredients.some((i) => i.ingredient_id === o.ingredient_id),
+      )
+    : [];
+  const offerHint =
+    matchingOffers.length === 0
+      ? null
+      : matchingOffers.length <= 2
+        ? matchingOffers.map((o) => o.product_name).join(" og ") + " på tilbud"
+        : `${matchingOffers.length} ingredienser på tilbud`;
 
   /* ── Empty state ──────────────────────────────────────────────────────────── */
   if (!meal || !recipe) {
@@ -156,7 +190,7 @@ export default function SelectedDayMealCard({
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-(--color-text) leading-snug m-0 mb-1">
+        <h2 className="font-serif text-xl font-bold text-(--color-text) leading-snug m-0 mb-1">
           {recipe.name}
         </h2>
 
@@ -167,24 +201,20 @@ export default function SelectedDayMealCard({
           </p>
         )}
 
-        {/* Action bar: shopping status (left) + upcoming days (right) */}
-        {((missingItems.length > 0 && !loadingIng) || upcomingDays.length > 0) && (
-          <div className="flex items-center gap-3 py-2 mb-1 border-t border-gray-100 min-w-0">
+        {/* Action bar: shopping status */}
+        {(missingItems.length > 0 && !loadingIng || offerHint) && (
+          <div className="flex flex-col gap-0.5 py-2 mb-1 border-t border-gray-100">
             {missingItems.length > 0 && !loadingIng && (
               <Link
                 href="/shopping-list"
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 shrink-0"
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
               >
                 <ShoppingCart size={13} />
                 {missingItems.length} varer mangler til i dag
               </Link>
             )}
-            {upcomingDays.length > 0 && (
-              <span className="text-sm text-gray-400 truncate ml-auto min-w-0">
-                {upcomingDays
-                  .map((d) => `${d.dayAbbr}: ${d.recipeName.length > 25 ? d.recipeName.slice(0, 25) + "…" : d.recipeName}`)
-                  .join(" · ")}
-              </span>
+            {offerHint && (
+              <p className="text-xs text-green-600 m-0">{offerHint}</p>
             )}
           </div>
         )}
@@ -211,86 +241,89 @@ export default function SelectedDayMealCard({
             className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
           >
             {showRecipe ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {showRecipe ? "Skjul opskrift" : "Se opskrift"}
+            {showRecipe ? "Skjul fremgangsmåde" : "Se fremgangsmåde"}
           </button>
 
-          {missingItems.length > 0 && (
-            <Link
-              href={`/shopping-list?recipeId=${recipe.id}`}
-              className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold border transition-colors bg-(--color-surface-2) text-(--color-text) border-(--color-text-muted)/50 hover:border-(--color-text-muted)/80 hover:bg-(--color-bg)"
-            >
-              <ListChecks size={14} />
-              {missingItems.length} varer på indkøbslisten
-            </Link>
-          )}
+          <Link
+            href={`/shopping-list?recipeId=${recipe.id}`}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border border-(--color-border) text-(--color-text-muted) transition-colors hover:border-(--color-text-muted)/80 hover:text-(--color-text)"
+          >
+            <ListChecks size={12} />
+            Se fuld indkøbsliste
+          </Link>
         </div>
 
-        {/* Inline missing preview */}
-        {missingItems.length > 0 && !loadingIng && (
-          <p className="text-xs text-(--color-text-muted) mt-2 m-0">
-            {missingItems.slice(0, 3).map((i) => i.name).join(" · ")}
-            {missingItems.length > 3 && (
-              <span className="opacity-60"> · +{missingItems.length - 3}</span>
-            )}
-          </p>
-        )}
+        {/* ── Compact ingredient list (always visible) ──────────────── */}
+        {!loadingIng && ingredients.length > 0 && (() => {
+          const sorted = [
+            ...ingredients.filter(isMissing),
+            ...ingredients.filter((i) => !isMissing(i)),
+          ];
+          const MAX = 8;
+          const shown = ingExpanded ? sorted : sorted.slice(0, MAX);
+          const extra = sorted.length - MAX;
+          return (
+            <ul className="list-none p-0 m-0 mt-3 pt-3 border-t border-(--color-border)/50 flex flex-col">
+              {shown.map((ing) => {
+                const missing = isMissing(ing);
+                const onOffer = offerIngredientIds.has(ing.ingredient_id);
+                return (
+                  <li
+                    key={ing.id}
+                    onClick={() => toggleIngredient(ing.id)}
+                    className="flex justify-between items-center py-1.5 border-b border-(--color-border)/40 last:border-0 cursor-pointer hover:bg-(--color-bg)/50 rounded-sm -mx-1 px-1 transition-colors select-none"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className={cn(
+                        "w-3.5 h-3.5 shrink-0 rounded-full border flex items-center justify-center transition-colors",
+                        missing
+                          ? "border-(--color-danger)/50 bg-transparent"
+                          : "border-transparent bg-(--color-primary)/20",
+                      )}>
+                        {!missing && <Check size={9} className="text-(--color-primary)" strokeWidth={3} />}
+                      </span>
+                      <span className={cn(
+                        "text-sm truncate transition-colors",
+                        missing ? "text-(--color-danger) opacity-80" : "text-(--color-text-muted) line-through",
+                      )}>
+                        {ing.name}
+                      </span>
+                      {onOffer && (
+                        <Tag size={10} className="shrink-0 text-green-500 opacity-70" />
+                      )}
+                    </span>
+                    <span className="text-xs text-(--color-text-muted) ml-3 shrink-0">
+                      {formatAmount(ing.amount)} {ing.unit}
+                    </span>
+                  </li>
+                );
+              })}
+              {extra > 0 && (
+                <li className="pt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIngExpanded((v) => !v)}
+                    className="text-xs text-(--color-text-muted) hover:text-(--color-text) transition-colors cursor-pointer bg-transparent border-none p-0"
+                  >
+                    {ingExpanded ? "Vis færre" : `+${extra} flere`}
+                  </button>
+                </li>
+              )}
+            </ul>
+          );
+        })()}
 
       </div>
 
-      {/* ── Recipe expand: ingredients + steps ────────────────────────────── */}
+      {/* ── Recipe expand: steps only ─────────────────────────────────────── */}
       {showRecipe && (
         <>
           <div className="h-px bg-(--color-border) mx-5" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-
-            {/* Left: Ingredients */}
-            <div className="px-5 pt-5 pb-5 sm:border-r border-(--color-border)">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0 mb-3">
-                Ingredienser
-              </h3>
-
-              {loadingIng ? (
-                <p className="text-sm text-(--color-text-muted) italic m-0">Henter…</p>
-              ) : ingredients.length === 0 ? (
-                <p className="text-sm text-(--color-text-muted) italic m-0">Ingen ingredienser tilføjet endnu.</p>
-              ) : (
-                <ul className="list-none p-0 m-0 flex flex-col">
-                  {ingredients.map((ing) => {
-                    const missing = isMissing(ing);
-                    return (
-                      <li
-                        key={ing.id}
-                        className="flex justify-between items-center text-sm py-2 border-b border-(--color-border)/40 last:border-0"
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <span className={cn(
-                            "w-1.5 h-1.5 shrink-0 rounded-full",
-                            missing ? "bg-(--color-danger) opacity-60" : "bg-(--color-primary) opacity-25",
-                          )} />
-                          <span className={cn(
-                            "truncate",
-                            missing ? "text-(--color-danger) opacity-75" : "text-(--color-text)",
-                          )}>
-                            {ing.name}
-                          </span>
-                        </span>
-                        <span className="text-(--color-text-muted) ml-3 shrink-0 text-xs">
-                          {formatAmount(ing.amount)} {ing.unit}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              <div className="sm:hidden h-px bg-(--color-border) mt-5" />
-            </div>
-
-            {/* Right: Steps */}
+            {/* Steps */}
             <div className="px-5 py-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
                   Fremgangsmåde
                 </h3>
                 {steps.length > 0 && doneCount > 0 && (
@@ -340,8 +373,6 @@ export default function SelectedDayMealCard({
                 </ol>
               )}
             </div>
-
-          </div>
         </>
       )}
     </div>

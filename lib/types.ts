@@ -54,3 +54,16 @@ export type WeekMeals = Record<
   number,
   Pick<Recipe, "id" | "name" | "emoji" | "time_minutes"> | null
 >;
+
+export interface StoreOffer {
+  id: string;
+  store: string | null;
+  ingredient_id: string | null;
+  product_name: string;
+  normal_price: number | null;
+  offer_price: number;
+  valid_from: string;
+  valid_to: string;
+  is_active: boolean;
+  created_at: string;
+}

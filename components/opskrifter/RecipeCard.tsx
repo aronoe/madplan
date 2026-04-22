@@ -31,7 +31,7 @@ export default function RecipeCard({ recipe: r, onClick, onToggleFavorite, onTog
 
       {/* Body */}
       <div className="flex flex-col flex-1 p-4">
-        <h3 className="font-semibold text-(--color-text) text-base line-clamp-2 leading-snug mb-2">
+        <h3 className="font-serif font-semibold text-(--color-text) text-base line-clamp-2 leading-snug mb-2">
           {r.name}
         </h3>
 

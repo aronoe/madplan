@@ -270,7 +270,7 @@ export default function RecipeView({ recipe, onClose, onDelete, onImageChange, o
               <span className="text-4xl leading-none shrink-0 mt-0.5">{recipe.emoji}</span>
             )}
             <div className="min-w-0">
-              <h2 className="m-0 text-xl font-bold text-(--color-text) leading-snug tracking-tight">
+              <h2 className="font-serif m-0 text-xl font-bold text-(--color-text) leading-snug tracking-tight">
                 {recipe.name}
               </h2>
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-(--color-text-muted)">
@@ -373,7 +373,7 @@ export default function RecipeView({ recipe, onClose, onDelete, onImageChange, o
               ) : (
               <>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
                   Ingredienser
                 </h3>
                 {missingIds.size > 0 && (
@@ -452,7 +452,7 @@ export default function RecipeView({ recipe, onClose, onDelete, onImageChange, o
                   const si = Math.min(currentStep, steps.length - 1);
                   return (
                     <>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3">
+                      <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) mb-3">
                         Fremgangsmåde — trin {si + 1} / {steps.length}
                       </h3>
                       <div className="bg-(--color-surface-2) border border-(--color-border) rounded-xl px-5 py-4 mb-3.5">

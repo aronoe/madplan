@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { Search, X } from "lucide-react";
+import { Search, X, Tag } from "lucide-react";
 import { CATEGORIES as RECIPE_CATEGORIES } from "@/components/opskrifter/RecipeForm";
 
 const CATEGORIES = ["Alle", ...RECIPE_CATEGORIES];
@@ -11,6 +11,8 @@ const CATEGORIES = ["Alle", ...RECIPE_CATEGORIES];
 type Props = {
   recipes: Recipe[];
   title?: string;
+  offerCounts?: Record<string, number>;
+  highlightedRecipeIds?: Set<string>;
   onSelect: (recipe: Recipe) => void;
   onClose: () => void;
 };
@@ -18,16 +20,22 @@ type Props = {
 export default function RecipePicker({
   recipes,
   title = "Vælg en opskrift",
+  offerCounts = {},
+  highlightedRecipeIds,
   onSelect,
   onClose,
 }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Alle");
+  const [onlyOffers, setOnlyOffers] = useState(false);
+
+  const hasAnyOffers = Object.keys(offerCounts).length > 0;
 
   const filtered = recipes.filter((r) => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase());
     const matchCategory = category === "Alle" || r.tags?.includes(category);
-    return matchSearch && matchCategory;
+    const matchOffers = !onlyOffers || (offerCounts[r.id] ?? 0) > 0;
+    return matchSearch && matchCategory && matchOffers;
   });
 
   return (
@@ -68,7 +76,7 @@ export default function RecipePicker({
           </div>
         </div>
 
-        {/* Category chips */}
+        {/* Category chips + offer filter */}
         <div className="px-5 pb-2.5 flex gap-1.5 flex-wrap shrink-0">
           {CATEGORIES.map((cat) => (
             <button
@@ -84,6 +92,20 @@ export default function RecipePicker({
               {cat}
             </button>
           ))}
+          {hasAnyOffers && (
+            <button
+              onClick={() => setOnlyOffers((v) => !v)}
+              className={cn(
+                "border rounded-full px-3 py-1 font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1",
+                onlyOffers
+                  ? "bg-green-100 text-green-700 border-green-400"
+                  : "bg-(--color-bg) text-(--color-text-mid) border-(--color-border) hover:border-green-400",
+              )}
+            >
+              <Tag size={10} />
+              Kun tilbud
+            </button>
+          )}
         </div>
 
         {/* Recipe list */}
@@ -94,26 +116,40 @@ export default function RecipePicker({
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {filtered.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => { onSelect(r); onClose(); }}
-                  className="flex items-center gap-3 px-3 py-2.5 bg-transparent border-none rounded-[10px] cursor-pointer text-left w-full hover:bg-(--color-active-bg) transition-colors"
-                >
-                  <span className="text-[22px] shrink-0">{r.emoji}</span>
-                  <span className="flex-1 text-sm font-semibold text-(--color-text)">
-                    {r.name}
-                  </span>
-                  {r.category && (
-                    <span className="text-[11px] text-(--color-text-muted) whitespace-nowrap">
-                      {r.category}
+              {filtered.map((r) => {
+                const matchCount = offerCounts[r.id] ?? 0;
+                const highlighted = highlightedRecipeIds?.has(r.id) ?? false;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => { onSelect(r); onClose(); }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 border-none rounded-[10px] cursor-pointer text-left w-full transition-colors",
+                      highlighted
+                        ? "bg-green-50 ring-1 ring-green-300 hover:bg-green-100"
+                        : "bg-transparent hover:bg-(--color-active-bg)",
+                    )}
+                  >
+                    <span className="text-[22px] shrink-0">{r.emoji}</span>
+                    <span className="flex-1 text-sm font-semibold text-(--color-text)">
+                      {r.name}
                     </span>
-                  )}
-                  <span className="text-xs text-(--color-text-muted) whitespace-nowrap shrink-0">
-                    {r.time_minutes} min
-                  </span>
-                </button>
-              ))}
+                    {matchCount > 0 && (
+                      <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">
+                        {matchCount} på tilbud
+                      </span>
+                    )}
+                    {r.category && (
+                      <span className="text-[11px] text-(--color-text-muted) whitespace-nowrap">
+                        {r.category}
+                      </span>
+                    )}
+                    <span className="text-xs text-(--color-text-muted) whitespace-nowrap shrink-0">
+                      {r.time_minutes} min
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

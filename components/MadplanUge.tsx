@@ -15,11 +15,13 @@ import {
   clearMeal,
   getMealPlan,
   getRecipes,
+  getActiveOffers,
+  getRecipeIngredientOverlap,
   getWeekStart,
   addWeeks,
   setMeal,
 } from "@/lib/queries";
-import type { Recipe, WeekMeals } from "@/lib/types";
+import type { Recipe, WeekMeals, StoreOffer } from "@/lib/types";
 import { invalidateCurrentWeekBadge } from "@/lib/shoppingBadgeStore";
 import RecipePicker from "@/components/RecipePicker";
 import SelectedDayMealCard from "@/components/SelectedDayMealCard";
@@ -128,6 +130,11 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   const [weekStart, setWeekStart] = useState(initialWeekStart ?? getWeekStart(0));
   const [meals, setMeals] = useState<WeekMeals>({});
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [offers, setOffers] = useState<StoreOffer[]>([]);
+  const [offerCounts, setOfferCounts] = useState<Record<string, number>>({});
+  const [ingredientRecipeMap, setIngredientRecipeMap] = useState<Record<string, string[]>>({});
+  const [selectedOfferIngredientId, setSelectedOfferIngredientId] = useState<string | null>(null);
+  const [showOffers, setShowOffers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
@@ -148,21 +155,39 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
-    Promise.all([
-      getMealPlan(familyId, weekStart),
-      getRecipes(familyId),
-    ])
-      .then(([plan, allRecipes]) => {
-        const map: WeekMeals = {};
-        for (const entry of plan ?? []) {
-          map[entry.day_of_week] = entry.recipe as Pick<
-            Recipe,
-            "id" | "name" | "emoji" | "time_minutes"
-          >;
-        }
-        setMeals(map);
-        setRecipes((allRecipes as Recipe[]) ?? []);
-      })
+
+    const load = async () => {
+      const [plan, allRecipes, activeOffers] = await Promise.all([
+        getMealPlan(familyId, weekStart),
+        getRecipes(familyId),
+        getActiveOffers(),
+      ]);
+
+      const map: WeekMeals = {};
+      for (const entry of plan ?? []) {
+        map[entry.day_of_week] = entry.recipe as Pick<
+          Recipe,
+          "id" | "name" | "emoji" | "time_minutes"
+        >;
+      }
+      setMeals(map);
+
+      const loadedRecipes = (allRecipes as Recipe[]) ?? [];
+      setRecipes(loadedRecipes);
+      setOffers(activeOffers);
+
+      const offerIngredientIds = activeOffers
+        .map((o) => o.ingredient_id)
+        .filter((id): id is string => id !== null);
+      const { counts, byIngredient } = await getRecipeIngredientOverlap(
+        loadedRecipes.map((r) => r.id),
+        offerIngredientIds,
+      );
+      setOfferCounts(counts);
+      setIngredientRecipeMap(byIngredient);
+    };
+
+    load()
       .catch(() =>
         setLoadError("Kunne ikke hente madplanen. Tjek din forbindelse og prøv igen."),
       )
@@ -247,10 +272,9 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   const todayIndex = todayDayIndex();
   const plannedCount = Object.values(meals).filter(Boolean).length;
 
-  const upcomingDays = Array.from({ length: 7 }, (_, i) => i)
-    .filter((i) => i > selectedDay && meals[i])
-    .slice(0, 3)
-    .map((i) => ({ dayAbbr: DAGE_SHORT[i].toUpperCase(), recipeName: meals[i]!.name }));
+  const highlightedRecipeIds: Set<string> = selectedOfferIngredientId
+    ? new Set(ingredientRecipeMap[selectedOfferIngredientId] ?? [])
+    : new Set();
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -318,7 +342,7 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
             }
             onClear={() => handleClear(selectedDay)}
             onSwitch={() => setPickerForDay(selectedDay)}
-            upcomingDays={upcomingDays}
+            offers={offers}
           />
 
           {/* ── Secondary: compact week strip ───────────────────────────────── */}
@@ -348,6 +372,73 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
               </Link>
             </div>
           )}
+
+          {/* ── Ugens tilbud (collapsible) ────────────────────────────────── */}
+          {offers.length > 0 && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setShowOffers((v) => !v)}
+                className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                {showOffers ? "Skjul tilbud" : `Se ugens tilbud (${offers.length})`}
+              </button>
+            </div>
+          )}
+          {showOffers && offers.length > 0 && (
+            <div className="mt-2 bg-(--color-surface) border border-(--color-border) rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-(--color-border)">
+                <span className="text-xs font-bold uppercase tracking-wide text-(--color-text-muted)">
+                  Ugens tilbud
+                </span>
+              </div>
+              <div className="divide-y divide-(--color-border)/40">
+                {offers.map((offer) => {
+                  const isSelected = offer.ingredient_id !== null && selectedOfferIngredientId === offer.ingredient_id;
+                  const matchCount = offer.ingredient_id ? (ingredientRecipeMap[offer.ingredient_id]?.length ?? 0) : 0;
+                  return (
+                    <button
+                      key={offer.id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedOfferIngredientId(
+                          isSelected ? null : (offer.ingredient_id ?? null),
+                        )
+                      }
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                        isSelected
+                          ? "bg-green-50 border-l-2 border-l-green-500"
+                          : offer.ingredient_id
+                            ? "hover:bg-(--color-surface-2) cursor-pointer"
+                            : "cursor-default",
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-(--color-text) truncate block">{offer.product_name}</span>
+                        <span className="text-xs text-(--color-text-muted)">
+                          {offer.store ?? ""}
+                          {matchCount > 0 && (
+                            <span className={cn("ml-1", isSelected ? "text-green-600 font-medium" : "")}>
+                              · {matchCount} {matchCount === 1 ? "opskrift" : "opskrifter"}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-semibold text-green-600">{offer.offer_price} kr</span>
+                        {offer.normal_price != null && (
+                          <span className="text-xs text-(--color-text-muted) line-through ml-1.5">
+                            {offer.normal_price} kr
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -359,6 +450,8 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
         <RecipePicker
           recipes={recipes}
           title={`Vælg ret til ${DAGE[pickerForDay]}`}
+          offerCounts={offerCounts}
+          highlightedRecipeIds={highlightedRecipeIds}
           onSelect={(recipe) => handlePickRecipe(recipe, pickerForDay)}
           onClose={() => setPickerForDay(null)}
         />
