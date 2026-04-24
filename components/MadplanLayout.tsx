@@ -24,6 +24,7 @@ export default function MadplanLayout({
 }) {
   const [view, setView] = useState<View>("uge");
   const [queueRefreshKey, setQueueRefreshKey] = useState(0);
+  const [jumpToTodayKey, setJumpToTodayKey] = useState(0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,7 +34,10 @@ export default function MadplanLayout({
           <button
             key={value}
             type="button"
-            onClick={() => setView(value)}
+            onClick={() => {
+              if (value === "uge") setJumpToTodayKey((k) => k + 1);
+              setView(value);
+            }}
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
               view === value
@@ -48,7 +52,7 @@ export default function MadplanLayout({
       </div>
 
       {view === "uge" ? (
-        <MadplanUge familyId={familyId} initialWeekStart={initialWeekStart} />
+        <MadplanUge familyId={familyId} initialWeekStart={initialWeekStart} jumpToTodayKey={jumpToTodayKey} />
       ) : (
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-3">

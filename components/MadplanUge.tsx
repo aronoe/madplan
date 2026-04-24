@@ -46,67 +46,6 @@ function getISOWeek(date: Date): number {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
-// ── Swipe drag hook ───────────────────────────────────────────────────────────
-
-function useSwipeDrag(onNext: () => void, onPrev: () => void) {
-  const [delta, setDelta] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const gesture = useRef<{ startX: number; startY: number; intent: "h" | "v" | null } | null>(null);
-  const reduceMotion = useRef(
-    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-
-  const THRESHOLD = 60;
-  const MAX = 100;
-
-  function onTouchStart(e: React.TouchEvent) {
-    gesture.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, intent: null };
-    setIsDragging(true);
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    const g = gesture.current;
-    if (!g) return;
-    const dx = e.touches[0].clientX - g.startX;
-    const dy = e.touches[0].clientY - g.startY;
-    if (g.intent === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      g.intent = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-    }
-    if (g.intent !== "h") return;
-    setDelta(Math.sign(dx) * Math.min(Math.abs(dx), MAX));
-  }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    const g = gesture.current;
-    if (!g) return;
-    const dx = e.changedTouches[0].clientX - g.startX;
-    const wasH = g.intent === "h";
-    gesture.current = null;
-    setIsDragging(false);
-    setDelta(0);
-    if (wasH && Math.abs(dx) >= THRESHOLD) {
-      if (dx < 0) onNext(); else onPrev();
-    }
-  }
-
-  function onTouchCancel() {
-    gesture.current = null;
-    setIsDragging(false);
-    setDelta(0);
-  }
-
-  const style: React.CSSProperties = {
-    touchAction: "pan-y",
-    ...(reduceMotion.current ? {} : {
-      transform: `translateX(${delta}px)`,
-      transition: isDragging ? "none" : "transform 0.25s ease-out",
-      willChange: isDragging ? "transform" : "auto",
-    }),
-  };
-
-  return { handlers: { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel }, style };
-}
-
 // ── Compact day slot ──────────────────────────────────────────────────────────
 
 function DagSlot({
@@ -187,7 +126,7 @@ function DragOverlayKort({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function MadplanUge({ familyId, initialWeekStart }: { familyId: string; initialWeekStart?: string }) {
+export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey }: { familyId: string; initialWeekStart?: string; jumpToTodayKey?: number }) {
   const [weekStart, setWeekStart] = useState(initialWeekStart ?? getWeekStart(0));
   const [meals, setMeals] = useState<WeekMeals>({});
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -209,9 +148,30 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   const [selectedDay, setSelectedDay] = useState<number>(todayDayIndex());
   const [pickerForDay, setPickerForDay] = useState<number | null>(null);
 
-  function goToPrevDay() { setSelectedDay((d) => Math.max(0, d - 1)); }
-  function goToNextDay() { setSelectedDay((d) => Math.min(6, d + 1)); }
-  const { handlers: swipeHandlers, style: swipeStyle } = useSwipeDrag(goToNextDay, goToPrevDay);
+  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const prevJumpKey = useRef(jumpToTodayKey ?? 0);
+
+  useEffect(() => {
+    const key = jumpToTodayKey ?? 0;
+    if (key === prevJumpKey.current) return;
+    prevJumpKey.current = key;
+    setWeekStart(getWeekStart(0));
+    setSelectedDay(todayDayIndex());
+  }, [jumpToTodayKey]);
+
+  function handleSwipeTouchStart(e: React.TouchEvent) {
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+
+  function handleSwipeTouchEnd(e: React.TouchEvent) {
+    if (!swipeRef.current) return;
+    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
+    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
+    swipeRef.current = null;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) setSelectedDay((d) => Math.min(6, d + 1));
+    else setSelectedDay((d) => Math.max(0, d - 1));
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -258,6 +218,7 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
       )
       .finally(() => setLoading(false));
   }, [familyId, weekStart, loadKey]);
+
 
   function handleDragStart(event: DragStartEvent) {
     const id = String(event.active.id);
@@ -344,11 +305,16 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
 
-      {/* ── Subtle week context header ─────────────────────────────────────── */}
+      {/* ── Week header ───────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-(--color-text-muted)">
-          Uge {getISOWeek(monday)} · {weekLabel}
-        </span>
+        <div className="flex flex-col leading-tight">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-(--color-text-muted)">
+            Uge {getISOWeek(monday)}
+          </span>
+          <span className="text-sm font-medium text-(--color-text) mt-0.5">
+            {weekLabel}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWeekStart((w) => addWeeks(w, -1))}
@@ -364,17 +330,6 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
           >
             <ChevronRight size={15} />
           </button>
-          {!isCurrentWeek && (
-            <button
-              onClick={() => {
-                setWeekStart(getWeekStart(0));
-                setSelectedDay(todayDayIndex());
-              }}
-              className={cn(navBtnClass, "px-2.5 text-(--color-primary)")}
-            >
-              I dag
-            </button>
-          )}
         </div>
       </div>
 
@@ -394,32 +349,12 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
         </div>
       ) : (
         <>
-          {/* ── Day navigation + card ───────────────────────────────────────── */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={goToPrevDay}
-              disabled={selectedDay === 0}
-              className={cn(navBtnClass, "disabled:opacity-30 disabled:cursor-not-allowed")}
-              aria-label="Forrige dag"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <span className="flex-1 text-center text-sm font-semibold text-(--color-text-muted)">
-              {DAGE[selectedDay]}
-            </span>
-            <button
-              type="button"
-              onClick={goToNextDay}
-              disabled={selectedDay === 6}
-              className={cn(navBtnClass, "disabled:opacity-30 disabled:cursor-not-allowed")}
-              aria-label="Næste dag"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
-
-          <div {...swipeHandlers} style={swipeStyle}>
+          {/* ── Active day card ──────────────────────────────────────────────── */}
+          <div
+            onTouchStart={handleSwipeTouchStart}
+            onTouchEnd={handleSwipeTouchEnd}
+            style={{ touchAction: "pan-y" }}
+          >
             <SelectedDayMealCard
               familyId={familyId}
               dayIndex={selectedDay}
@@ -435,6 +370,9 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
               offers={offers}
             />
           </div>
+          <p className="sm:hidden text-center text-xs text-(--color-text-muted)/40 mt-2 select-none">
+            ← Swipe mellem dage →
+          </p>
 
           {/* ── Secondary: compact week strip ───────────────────────────────── */}
           <div className="grid grid-cols-7 gap-2 mt-4">
