@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -44,6 +44,26 @@ function getISOWeek(date: Date): number {
   d.setDate(d.getDate() + 4 - (d.getDay() || 7));
   const yearStart = new Date(d.getFullYear(), 0, 1);
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+// ── Swipe gesture hook ───────────────────────────────────────────────────────
+
+function useSwipe(onLeft: () => void, onRight: () => void) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (!start.current) return;
+      const dx = e.changedTouches[0].clientX - start.current.x;
+      const dy = e.changedTouches[0].clientY - start.current.y;
+      start.current = null;
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) onLeft();
+      else onRight();
+    },
+  };
 }
 
 // ── Compact day slot ──────────────────────────────────────────────────────────
@@ -147,6 +167,10 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
   // Always start on today; user can navigate from there
   const [selectedDay, setSelectedDay] = useState<number>(todayDayIndex());
   const [pickerForDay, setPickerForDay] = useState<number | null>(null);
+
+  function goToPrevDay() { setSelectedDay((d) => Math.max(0, d - 1)); }
+  function goToNextDay() { setSelectedDay((d) => Math.min(6, d + 1)); }
+  const swipe = useSwipe(goToNextDay, goToPrevDay);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -329,21 +353,47 @@ export default function MadplanUge({ familyId, initialWeekStart }: { familyId: s
         </div>
       ) : (
         <>
-          {/* ── Today's recipe card ─────────────────────────────────────────── */}
-          <SelectedDayMealCard
-            familyId={familyId}
-            dayIndex={selectedDay}
-            weekStart={weekStart}
-            meal={meals[selectedDay] ?? null}
-            fullRecipe={
-              meals[selectedDay]
-                ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null)
-                : null
-            }
-            onClear={() => handleClear(selectedDay)}
-            onSwitch={() => setPickerForDay(selectedDay)}
-            offers={offers}
-          />
+          {/* ── Day navigation + card ───────────────────────────────────────── */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={goToPrevDay}
+              disabled={selectedDay === 0}
+              className={cn(navBtnClass, "disabled:opacity-30 disabled:cursor-not-allowed")}
+              aria-label="Forrige dag"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span className="flex-1 text-center text-sm font-semibold text-(--color-text-muted)">
+              {DAGE[selectedDay]}
+            </span>
+            <button
+              type="button"
+              onClick={goToNextDay}
+              disabled={selectedDay === 6}
+              className={cn(navBtnClass, "disabled:opacity-30 disabled:cursor-not-allowed")}
+              aria-label="Næste dag"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+
+          <div {...swipe}>
+            <SelectedDayMealCard
+              familyId={familyId}
+              dayIndex={selectedDay}
+              weekStart={weekStart}
+              meal={meals[selectedDay] ?? null}
+              fullRecipe={
+                meals[selectedDay]
+                  ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null)
+                  : null
+              }
+              onClear={() => handleClear(selectedDay)}
+              onSwitch={() => setPickerForDay(selectedDay)}
+              offers={offers}
+            />
+          </div>
 
           {/* ── Secondary: compact week strip ───────────────────────────────── */}
           <div className="grid grid-cols-7 gap-2 mt-4">
