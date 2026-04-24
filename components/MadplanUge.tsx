@@ -148,7 +148,13 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
   const [selectedDay, setSelectedDay] = useState<number>(todayDayIndex());
   const [pickerForDay, setPickerForDay] = useState<number | null>(null);
 
-  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    locked: "h" | "v" | null;
+    active: boolean;
+  } | null>(null);
   const prevJumpKey = useRef(jumpToTodayKey ?? 0);
 
   useEffect(() => {
@@ -159,17 +165,48 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
     setSelectedDay(todayDayIndex());
   }, [jumpToTodayKey]);
 
-  function handleSwipeTouchStart(e: React.TouchEvent) {
-    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  // Reset card transform when day changes from any source (button, tab, jump)
+  useEffect(() => {
+    if (!cardRef.current) return;
+    cardRef.current.style.transition = "none";
+    cardRef.current.style.transform = "";
+  }, [selectedDay]);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    dragRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      locked: null,
+      active: false,
+    };
   }
 
-  function handleSwipeTouchEnd(e: React.TouchEvent) {
-    if (!swipeRef.current) return;
-    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
-    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
-    swipeRef.current = null;
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) setSelectedDay((d) => Math.min(6, d + 1));
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!dragRef.current || !cardRef.current) return;
+    const dx = e.touches[0].clientX - dragRef.current.startX;
+    const dy = e.touches[0].clientY - dragRef.current.startY;
+    if (!dragRef.current.locked) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      dragRef.current.locked = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+    }
+    if (dragRef.current.locked === "v") return;
+    dragRef.current.active = true;
+    const card = cardRef.current;
+    card.style.transition = "none";
+    const clamped = Math.max(-150, Math.min(150, dx));
+    card.style.transform = `translateX(${clamped}px) scale(0.99)`;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!dragRef.current || !cardRef.current) return;
+    const dx = e.changedTouches[0].clientX - dragRef.current.startX;
+    const wasActive = dragRef.current.active;
+    dragRef.current = null;
+    const card = cardRef.current;
+    card.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    card.style.transform = "translateX(0) scale(1)";
+    if (!wasActive || Math.abs(dx) < 50) return;
+    if (dx > 0) setSelectedDay((d) => Math.min(6, d + 1));
     else setSelectedDay((d) => Math.max(0, d - 1));
   }
 
@@ -349,33 +386,8 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
         </div>
       ) : (
         <>
-          {/* ── Active day card ──────────────────────────────────────────────── */}
-          <div
-            onTouchStart={handleSwipeTouchStart}
-            onTouchEnd={handleSwipeTouchEnd}
-            style={{ touchAction: "pan-y" }}
-          >
-            <SelectedDayMealCard
-              familyId={familyId}
-              dayIndex={selectedDay}
-              weekStart={weekStart}
-              meal={meals[selectedDay] ?? null}
-              fullRecipe={
-                meals[selectedDay]
-                  ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null)
-                  : null
-              }
-              onClear={() => handleClear(selectedDay)}
-              onSwitch={() => setPickerForDay(selectedDay)}
-              offers={offers}
-            />
-          </div>
-          <p className="sm:hidden text-center text-xs text-(--color-text-muted)/40 mt-2 select-none">
-            ← Swipe mellem dage →
-          </p>
-
-          {/* ── Secondary: compact week strip ───────────────────────────────── */}
-          <div className="grid grid-cols-7 gap-2 mt-4">
+          {/* ── Day selector ─────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-7 gap-2 mb-3">
             {Array.from({ length: 7 }, (_, i) => (
               <DagSlot
                 key={i}
@@ -388,6 +400,54 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
               />
             ))}
           </div>
+
+          {/* ── Active day card ──────────────────────────────────────────────── */}
+          <div className="relative">
+            <button
+              onClick={() => setSelectedDay((d) => Math.max(0, d - 1))}
+              disabled={selectedDay === 0}
+              aria-label="Forrige dag"
+              className="hidden md:flex absolute -left-11 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center bg-(--color-surface) border border-(--color-border) text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) transition-colors disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div
+              ref={cardRef}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ touchAction: "pan-y" }}
+            >
+              <SelectedDayMealCard
+                familyId={familyId}
+                dayIndex={selectedDay}
+                weekStart={weekStart}
+                meal={meals[selectedDay] ?? null}
+                fullRecipe={
+                  meals[selectedDay]
+                    ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null)
+                    : null
+                }
+                onClear={() => handleClear(selectedDay)}
+                onSwitch={() => setPickerForDay(selectedDay)}
+                offers={offers}
+              />
+            </div>
+
+            <button
+              onClick={() => setSelectedDay((d) => Math.min(6, d + 1))}
+              disabled={selectedDay === 6}
+              aria-label="Næste dag"
+              className="hidden md:flex absolute -right-11 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center bg-(--color-surface) border border-(--color-border) text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) transition-colors disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <p className="sm:hidden text-center text-xs text-(--color-text-muted)/40 mt-2 select-none">
+            ← Swipe mellem dage →
+          </p>
 
           {/* Empty week hint */}
           {plannedCount === 0 && (
