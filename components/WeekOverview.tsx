@@ -218,7 +218,7 @@ export default function WeekOverview({
       );
       const newGrid = Array(7).fill(null) as (DaySlot | null)[];
       for (let i = 0; i < plan.length; i++) {
-        newGrid[i] = { recipeId: plan[i].id, name: plan[i].name, emoji: plan[i].emoji };
+        newGrid[i] = { recipeId: plan[i].id, name: plan[i].name, emoji: plan[i].emoji, status: "planned" };
       }
 
       const [newIngredients, checkedIds] = await Promise.all([
@@ -278,7 +278,7 @@ export default function WeekOverview({
     if (available.length === 0) return;
     const pick = available[Math.floor(Math.random() * available.length)];
     const next = [...expandedSlots];
-    next[i] = { recipeId: pick.id, name: pick.name, emoji: pick.emoji };
+    next[i] = { recipeId: pick.id, name: pick.name, emoji: pick.emoji, status: "planned" };
     setExpandedSlots(next);
   }
 
