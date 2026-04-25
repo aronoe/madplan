@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Recipe, RecipeIngredient, RecipeStep, StoreOffer } from "@/lib/types";
+import type { Recipe, RecipeIngredient, RecipeStep, StoreOffer, MealStatus } from "@/lib/types";
 import { aggregateIngredients } from "@/lib/ingredientUtils";
 
 export function getWeekStart(offset = 0): string {
@@ -51,11 +51,43 @@ export async function setMeal(
       week_start: weekStart,
       day_of_week: dayOfWeek,
       recipe_id: recipeId,
+      status: "planned",
     },
     { onConflict: "family_id,week_start,day_of_week" },
   );
 
   if (error) throw error;
+}
+
+export async function setMealStatus(
+  familyId: string,
+  weekStart: string,
+  dayOfWeek: number,
+  status: MealStatus,
+): Promise<void> {
+  const res = await fetch("/api/meal-plan/status", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      family_id: familyId,
+      week_start: weekStart,
+      day_of_week: dayOfWeek,
+      status,
+    }),
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const json = await res.json();
+      detail = json.error ?? json.details ?? "";
+    } catch {
+      // ignore parse error
+    }
+    throw new Error(
+      `[setMealStatus] API error ${res.status}${detail ? `: ${detail}` : ""}`,
+    );
+  }
 }
 
 export async function clearMeal(

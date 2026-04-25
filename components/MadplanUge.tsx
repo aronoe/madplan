@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   DndContext,
   DragEndEvent,
@@ -20,18 +21,20 @@ import {
   getWeekStart,
   addWeeks,
   setMeal,
+  setMealStatus,
 } from "@/lib/queries";
-import type { Recipe, WeekMeals, StoreOffer } from "@/lib/types";
+import type { Recipe, WeekMeals, StoreOffer, MealStatus } from "@/lib/types";
 import { invalidateCurrentWeekBadge } from "@/lib/shoppingBadgeStore";
 import RecipePicker from "@/components/RecipePicker";
 import SelectedDayMealCard from "@/components/SelectedDayMealCard";
 import { RecipeImageThumb } from "@/components/RecipeImage";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Check } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 const DAGE_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+const CAROUSEL_GAP = 16; // px — gap between carousel slides (visible only during swipe/transition)
 
 // 0 = Monday … 6 = Sunday (matches DB day_of_week)
 function todayDayIndex(): number {
@@ -55,6 +58,7 @@ function DagSlot({
   isSelected,
   isToday,
   onSelect,
+  status,
 }: {
   dayIndex: number;
   meal: Pick<Recipe, "id" | "name" | "emoji" | "time_minutes"> | null;
@@ -62,6 +66,7 @@ function DagSlot({
   isSelected: boolean;
   isToday: boolean;
   onSelect: () => void;
+  status?: MealStatus;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `slot-${dayIndex}` });
 
@@ -92,7 +97,17 @@ function DagSlot({
         )}
       >
         {meal ? (
-          <RecipeImageThumb imageUrl={imageUrl} name={meal.name} />
+          <div className="relative w-full h-full">
+            <RecipeImageThumb imageUrl={imageUrl} name={meal.name} />
+            {status === "completed" && (
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-(--color-primary) rounded-full flex items-center justify-center shadow-sm">
+                <Check size={8} className="text-white" strokeWidth={3} />
+              </span>
+            )}
+            {status === "cooking" && (
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-(--color-warning) shadow-sm" />
+            )}
+          </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-0.5">
             <Plus size={10} className="text-(--color-text-muted)/40" />
@@ -147,14 +162,16 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
   // Always start on today; user can navigate from there
   const [selectedDay, setSelectedDay] = useState<number>(todayDayIndex());
   const [pickerForDay, setPickerForDay] = useState<number | null>(null);
+  const [mealStatuses, setMealStatuses] = useState<Record<number, MealStatus>>({});
 
-  const cardRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
     locked: "h" | "v" | null;
     active: boolean;
   } | null>(null);
+  const swipeGenRef = useRef(0);
   const prevJumpKey = useRef(jumpToTodayKey ?? 0);
 
   useEffect(() => {
@@ -165,14 +182,42 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
     setSelectedDay(todayDayIndex());
   }, [jumpToTodayKey]);
 
-  // Reset card transform when day changes from any source (button, tab, jump)
+  // Reset track to center when day changes from any non-swipe source.
   useEffect(() => {
-    if (!cardRef.current) return;
-    cardRef.current.style.transition = "none";
-    cardRef.current.style.transform = "";
+    if (!trackRef.current) return;
+    trackRef.current.style.transition = "none";
+    trackRef.current.style.transform = `translate3d(calc(-100% - ${CAROUSEL_GAP}px), 0, 0)`;
   }, [selectedDay]);
 
+  const SNAP = "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)";
+
+  function navigateCarousel(direction: "next" | "prev") {
+    if (!trackRef.current) return;
+    if (direction === "next" && selectedDay >= 6) return;
+    if (direction === "prev" && selectedDay <= 0) return;
+    const track = trackRef.current;
+    const gen = ++swipeGenRef.current;
+    track.style.transition = SNAP;
+    track.style.transform = direction === "next"
+      ? `translate3d(calc(-200% - ${CAROUSEL_GAP * 2}px), 0, 0)`
+      : "translate3d(0%, 0, 0)";
+    track.addEventListener("transitionend", () => {
+      if (swipeGenRef.current !== gen) return;
+      flushSync(() => setSelectedDay((d) =>
+        direction === "next" ? Math.min(6, d + 1) : Math.max(0, d - 1),
+      ));
+      track.style.transition = "none";
+      track.style.transform = `translate3d(calc(-100% - ${CAROUSEL_GAP}px), 0, 0)`;
+    }, { once: true });
+  }
+
   function handleTouchStart(e: React.TouchEvent) {
+    // Invalidate any in-flight snap and reset track to center instantly.
+    swipeGenRef.current++;
+    if (trackRef.current) {
+      trackRef.current.style.transition = "none";
+      trackRef.current.style.transform = `translate3d(calc(-100% - ${CAROUSEL_GAP}px), 0, 0)`;
+    }
     dragRef.current = {
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
@@ -182,7 +227,7 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!dragRef.current || !cardRef.current) return;
+    if (!dragRef.current || !trackRef.current) return;
     const dx = e.touches[0].clientX - dragRef.current.startX;
     const dy = e.touches[0].clientY - dragRef.current.startY;
     if (!dragRef.current.locked) {
@@ -190,24 +235,26 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
       dragRef.current.locked = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
     }
     if (dragRef.current.locked === "v") return;
+    // Block overscroll at first/last day.
+    if ((selectedDay === 0 && dx > 0) || (selectedDay === 6 && dx < 0)) return;
     dragRef.current.active = true;
-    const card = cardRef.current;
-    card.style.transition = "none";
-    const clamped = Math.max(-150, Math.min(150, dx));
-    card.style.transform = `translateX(${clamped}px) scale(0.99)`;
+    trackRef.current.style.transition = "none";
+    trackRef.current.style.transform = `translate3d(calc(-100% - ${CAROUSEL_GAP}px + ${dx}px), 0, 0)`;
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (!dragRef.current || !cardRef.current) return;
+    if (!dragRef.current || !trackRef.current) return;
     const dx = e.changedTouches[0].clientX - dragRef.current.startX;
     const wasActive = dragRef.current.active;
     dragRef.current = null;
-    const card = cardRef.current;
-    card.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-    card.style.transform = "translateX(0) scale(1)";
-    if (!wasActive || Math.abs(dx) < 50) return;
-    if (dx > 0) setSelectedDay((d) => Math.min(6, d + 1));
-    else setSelectedDay((d) => Math.max(0, d - 1));
+    const track = trackRef.current;
+    if (!wasActive || Math.abs(dx) < 50) {
+      track.style.transition = SNAP;
+      track.style.transform = `translate3d(calc(-100% - ${CAROUSEL_GAP}px), 0, 0)`;
+      return;
+    }
+    if (dx > 0) navigateCarousel("prev");
+    else navigateCarousel("next");
   }
 
   const sensors = useSensors(
@@ -226,13 +273,16 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
       ]);
 
       const map: WeekMeals = {};
+      const statusMap: Record<number, MealStatus> = {};
       for (const entry of plan ?? []) {
         map[entry.day_of_week] = entry.recipe as Pick<
           Recipe,
           "id" | "name" | "emoji" | "time_minutes"
         >;
+        statusMap[entry.day_of_week] = ((entry as { status?: string }).status ?? "planned") as MealStatus;
       }
       setMeals(map);
+      setMealStatuses(statusMap);
 
       const loadedRecipes = (allRecipes as Recipe[]) ?? [];
       setRecipes(loadedRecipes);
@@ -319,6 +369,14 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
       .catch(() => setMeals((m) => ({ ...m, [dayIndex]: prev })));
   }
 
+  function handleStatusChange(dayIndex: number, newStatus: MealStatus) {
+    const prev = mealStatuses[dayIndex] ?? "planned";
+    setMealStatuses((s) => ({ ...s, [dayIndex]: newStatus }));
+    setMealStatus(familyId, weekStart, dayIndex, newStatus).catch(() =>
+      setMealStatuses((s) => ({ ...s, [dayIndex]: prev })),
+    );
+  }
+
   function handlePickRecipe(recipe: Recipe, dayIndex: number) {
     setMeals((prev) => ({ ...prev, [dayIndex]: recipe }));
     setMeal(familyId, weekStart, dayIndex, recipe.id)
@@ -397,6 +455,7 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
                 isSelected={selectedDay === i}
                 isToday={isCurrentWeek && i === todayIndex}
                 onSelect={() => meals[i] ? setSelectedDay(i) : setPickerForDay(i)}
+                status={mealStatuses[i]}
               />
             ))}
           </div>
@@ -404,7 +463,7 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
           {/* ── Active day card ──────────────────────────────────────────────── */}
           <div className="relative">
             <button
-              onClick={() => setSelectedDay((d) => Math.max(0, d - 1))}
+              onClick={() => navigateCarousel("prev")}
               disabled={selectedDay === 0}
               aria-label="Forrige dag"
               className="hidden md:flex absolute -left-11 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center bg-(--color-surface) border border-(--color-border) text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) transition-colors disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
@@ -412,31 +471,78 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
               <ChevronLeft size={16} />
             </button>
 
+            {/* overflow-hidden clips adjacent cards; desktop sees only center */}
             <div
-              ref={cardRef}
+              className="overflow-hidden"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
               style={{ touchAction: "pan-y" }}
             >
-              <SelectedDayMealCard
-                familyId={familyId}
-                dayIndex={selectedDay}
-                weekStart={weekStart}
-                meal={meals[selectedDay] ?? null}
-                fullRecipe={
-                  meals[selectedDay]
-                    ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null)
-                    : null
-                }
-                onClear={() => handleClear(selectedDay)}
-                onSwitch={() => setPickerForDay(selectedDay)}
-                offers={offers}
-              />
+              <div
+                ref={trackRef}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  gap: `${CAROUSEL_GAP}px`,
+                  transform: `translate3d(calc(-100% - ${CAROUSEL_GAP}px), 0, 0)`,
+                  willChange: "transform",
+                }}
+              >
+                {/* Left slot: prev day */}
+                <div key={selectedDay - 1} className="flex-none w-full min-w-0">
+                  {selectedDay > 0 ? (
+                    <SelectedDayMealCard
+                      familyId={familyId}
+                      dayIndex={selectedDay - 1}
+                      weekStart={weekStart}
+                      meal={meals[selectedDay - 1] ?? null}
+                      fullRecipe={meals[selectedDay - 1] ? (recipes.find((r) => r.id === meals[selectedDay - 1]!.id) ?? null) : null}
+                      onClear={() => handleClear(selectedDay - 1)}
+                      onSwitch={() => setPickerForDay(selectedDay - 1)}
+                      offers={offers}
+                      status={mealStatuses[selectedDay - 1] ?? "planned"}
+                      onStatusChange={(s) => handleStatusChange(selectedDay - 1, s)}
+                    />
+                  ) : <div />}
+                </div>
+                {/* Center slot: current day */}
+                <div key={selectedDay} className="flex-none w-full min-w-0">
+                  <SelectedDayMealCard
+                    familyId={familyId}
+                    dayIndex={selectedDay}
+                    weekStart={weekStart}
+                    meal={meals[selectedDay] ?? null}
+                    fullRecipe={meals[selectedDay] ? (recipes.find((r) => r.id === meals[selectedDay]!.id) ?? null) : null}
+                    onClear={() => handleClear(selectedDay)}
+                    onSwitch={() => setPickerForDay(selectedDay)}
+                    offers={offers}
+                    status={mealStatuses[selectedDay] ?? "planned"}
+                    onStatusChange={(s) => handleStatusChange(selectedDay, s)}
+                  />
+                </div>
+                {/* Right slot: next day */}
+                <div key={selectedDay + 1} className="flex-none w-full min-w-0">
+                  {selectedDay < 6 ? (
+                    <SelectedDayMealCard
+                      familyId={familyId}
+                      dayIndex={selectedDay + 1}
+                      weekStart={weekStart}
+                      meal={meals[selectedDay + 1] ?? null}
+                      fullRecipe={meals[selectedDay + 1] ? (recipes.find((r) => r.id === meals[selectedDay + 1]!.id) ?? null) : null}
+                      onClear={() => handleClear(selectedDay + 1)}
+                      onSwitch={() => setPickerForDay(selectedDay + 1)}
+                      offers={offers}
+                      status={mealStatuses[selectedDay + 1] ?? "planned"}
+                      onStatusChange={(s) => handleStatusChange(selectedDay + 1, s)}
+                    />
+                  ) : <div />}
+                </div>
+              </div>
             </div>
 
             <button
-              onClick={() => setSelectedDay((d) => Math.min(6, d + 1))}
+              onClick={() => navigateCarousel("next")}
               disabled={selectedDay === 6}
               aria-label="Næste dag"
               className="hidden md:flex absolute -right-11 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center bg-(--color-surface) border border-(--color-border) text-(--color-text-muted) hover:text-(--color-text) hover:border-(--color-text-muted) transition-colors disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
@@ -468,7 +574,7 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
               <button
                 type="button"
                 onClick={() => setShowOffers((v) => !v)}
-                className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
+                className="text-xs text-(--color-saffron-text) hover:text-(--color-saffron-hover) font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 {showOffers ? "Skjul tilbud" : `Se ugens tilbud (${offers.length})`}
               </button>
@@ -497,7 +603,7 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
                         isSelected
-                          ? "bg-green-50 border-l-2 border-l-green-500"
+                          ? "bg-(--color-saffron-subtle) border-l-2 border-l-(--color-saffron)"
                           : offer.ingredient_id
                             ? "hover:bg-(--color-surface-2) cursor-pointer"
                             : "cursor-default",
@@ -508,14 +614,14 @@ export default function MadplanUge({ familyId, initialWeekStart, jumpToTodayKey 
                         <span className="text-xs text-(--color-text-muted)">
                           {offer.store ?? ""}
                           {matchCount > 0 && (
-                            <span className={cn("ml-1", isSelected ? "text-green-600 font-medium" : "")}>
+                            <span className={cn("ml-1", isSelected ? "text-(--color-saffron-text) font-medium" : "")}>
                               · {matchCount} {matchCount === 1 ? "opskrift" : "opskrifter"}
                             </span>
                           )}
                         </span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-sm font-semibold text-green-600">{offer.offer_price} kr</span>
+                        <span className="text-sm font-semibold text-(--color-saffron-text)">{offer.offer_price} kr</span>
                         {offer.normal_price != null && (
                           <span className="text-xs text-(--color-text-muted) line-through ml-1.5">
                             {offer.normal_price} kr

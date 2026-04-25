@@ -1,3 +1,5 @@
+export type MealStatus = "planned" | "cooking" | "completed";
+
 export interface BaseIngredient {
   id: string;
   name: string;

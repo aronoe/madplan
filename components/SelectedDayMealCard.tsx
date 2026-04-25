@@ -22,7 +22,10 @@ import {
   ShoppingCart,
   Tag,
   Check,
+  ChefHat,
+  CheckCircle2,
 } from "lucide-react";
+import type { MealStatus } from "@/lib/types";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
@@ -39,6 +42,8 @@ type Props = {
   onClear: () => void;
   onSwitch: () => void;
   offers?: StoreOffer[];
+  status?: MealStatus;
+  onStatusChange?: (status: MealStatus) => void;
 };
 
 export default function SelectedDayMealCard({
@@ -50,6 +55,8 @@ export default function SelectedDayMealCard({
   onClear,
   onSwitch,
   offers = [],
+  status = "planned",
+  onStatusChange,
 }: Props) {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [loadingIng, setLoadingIng] = useState(false);
@@ -70,6 +77,10 @@ export default function SelectedDayMealCard({
       })
       .catch(() => setChecked({}));
   }, [familyId, weekStart]);
+
+  useEffect(() => {
+    if (status === "cooking") setShowRecipe(true);
+  }, [status]);
 
   useEffect(() => {
     if (!meal) {
@@ -116,28 +127,39 @@ export default function SelectedDayMealCard({
       .finally(() => savingIds.current.delete(id));
   }
 
+  function handleMarkComplete() {
+    const unchecked = ingredients.filter((ing) => !checked[ing.id]);
+    if (unchecked.length > 0) {
+      setChecked((prev) => {
+        const next = { ...prev };
+        unchecked.forEach((ing) => { next[ing.id] = true; });
+        return next;
+      });
+      Promise.all(
+        unchecked.map((ing) => setShoppingItemChecked(familyId, weekStart, ing.id, true)),
+      )
+        .then(() => invalidateCurrentWeekBadge())
+        .catch(() => {
+          setChecked((prev) => {
+            const reverted = { ...prev };
+            unchecked.forEach((ing) => { delete reverted[ing.id]; });
+            return reverted;
+          });
+        });
+    }
+    onStatusChange?.("completed");
+  }
+
   const recipe = fullRecipe ?? meal;
   const missingItems = !loadingIng ? ingredients.filter(isMissing) : [];
   const doneCount = doneStepIds.size;
 
   const offerIngredientIds = new Set(offers.map((o) => o.ingredient_id).filter(Boolean));
 
-  const matchingOffers = !loadingIng
-    ? offers.filter(
-        (o) => o.ingredient_id && ingredients.some((i) => i.ingredient_id === o.ingredient_id),
-      )
-    : [];
-  const offerHint =
-    matchingOffers.length === 0
-      ? null
-      : matchingOffers.length <= 2
-        ? matchingOffers.map((o) => o.product_name).join(" og ") + " på tilbud"
-        : `${matchingOffers.length} ingredienser på tilbud`;
-
   /* ── Empty state ──────────────────────────────────────────────────────────── */
   if (!meal || !recipe) {
     return (
-      <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl p-10 flex flex-col items-center gap-4">
+      <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl p-10 flex flex-col items-center gap-4 shadow-sm">
         <PackageOpen size={32} className="text-(--color-text-muted)" strokeWidth={1.5} />
         <p className="text-sm text-(--color-text-muted) m-0">
           {DAGE[dayIndex]} — ingen ret planlagt
@@ -154,7 +176,10 @@ export default function SelectedDayMealCard({
 
   /* ── Hero card ────────────────────────────────────────────────────────────── */
   return (
-    <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl overflow-hidden shadow-sm">
+    <div className={cn(
+      "bg-(--color-surface) border border-(--color-border) rounded-2xl overflow-hidden shadow-sm",
+      status === "completed" && "opacity-75",
+    )}>
 
       {/* Hero image */}
       <RecipeImage
@@ -162,6 +187,62 @@ export default function SelectedDayMealCard({
         name={recipe.name}
         className="h-40 sm:h-48"
       />
+
+      {/* ── Unified status bar ────────────────────────────────────── */}
+      {(status === "completed" || status === "cooking" || (!loadingIng && ingredients.length > 0)) && (
+        <div className={cn(
+          "flex items-center gap-2.5 px-5 py-3 border-b border-(--color-border) min-h-11",
+          status === "completed"
+            ? "bg-(--color-primary-subtle)"
+            : status === "cooking"
+            ? "bg-(--color-warning-subtle)"
+            : !loadingIng && missingItems.length === 0
+            ? "bg-(--color-primary-subtle)"
+            : "bg-(--color-saffron-subtle)",
+        )}>
+          {status === "completed" ? (
+            <>
+              <CheckCircle2 size={15} className="text-(--color-primary) shrink-0" />
+              <span className="text-sm font-semibold text-(--color-primary-text)">Aftensmad er lavet!</span>
+              <button
+                type="button"
+                onClick={() => onStatusChange?.("planned")}
+                className="ml-auto text-xs text-(--color-text-muted) hover:text-(--color-text) cursor-pointer bg-transparent border-none p-0"
+              >
+                Fortryd
+              </button>
+            </>
+          ) : (
+            <>
+              {status === "cooking" && (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-(--color-warning) shrink-0" />
+                  <span className="text-sm font-medium text-(--color-warning-text)">Madlavning i gang</span>
+                  {!loadingIng && ingredients.length > 0 && (
+                    <span className="text-(--color-warning-text)/40 text-xs select-none">·</span>
+                  )}
+                </>
+              )}
+              {!loadingIng && ingredients.length > 0 && (
+                missingItems.length === 0 ? (
+                  <span className="flex items-center gap-1.5 text-sm text-(--color-primary-text)">
+                    <Check size={13} className="shrink-0 text-(--color-primary)" strokeWidth={2.5} />
+                    Alle varer er købt
+                  </span>
+                ) : (
+                  <Link
+                    href="/shopping-list"
+                    className="flex items-center gap-1.5 text-sm font-medium text-(--color-saffron-text) hover:text-(--color-text)"
+                  >
+                    <ShoppingCart size={13} />
+                    {missingItems.length} varer mangler
+                  </Link>
+                )
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-5 pt-5 pb-4">
@@ -190,34 +271,9 @@ export default function SelectedDayMealCard({
         </div>
 
         {/* Title */}
-        <h2 className="font-serif text-xl font-bold text-(--color-text) leading-snug m-0 mb-1">
+        <h2 className="font-serif text-xl font-bold text-(--color-text) leading-snug m-0 mb-3">
           {recipe.name}
         </h2>
-
-        {/* Cooktime estimate */}
-        {meal.time_minutes > 0 && (
-          <p className="text-sm text-(--color-text-muted) m-0 mb-3">
-            Klar om ca. {meal.time_minutes} min
-          </p>
-        )}
-
-        {/* Action bar: shopping status */}
-        {(missingItems.length > 0 && !loadingIng || offerHint) && (
-          <div className="flex flex-col gap-0.5 py-2 mb-1 border-t border-gray-100">
-            {missingItems.length > 0 && !loadingIng && (
-              <Link
-                href="/shopping-list"
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
-              >
-                <ShoppingCart size={13} />
-                {missingItems.length} varer mangler til i dag
-              </Link>
-            )}
-            {offerHint && (
-              <p className="text-xs text-green-600 m-0">{offerHint}</p>
-            )}
-          </div>
-        )}
 
         {/* Tags */}
         {(fullRecipe?.tags ?? []).length > 0 && (
@@ -235,93 +291,120 @@ export default function SelectedDayMealCard({
 
         {/* CTA row */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setShowRecipe((v) => !v)}
-            className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
-          >
-            {showRecipe ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {showRecipe ? "Skjul fremgangsmåde" : "Se fremgangsmåde"}
-          </button>
-
-          <Link
-            href={`/shopping-list?recipeId=${recipe.id}`}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border border-(--color-border) text-(--color-text-muted) transition-colors hover:border-(--color-text-muted)/80 hover:text-(--color-text)"
-          >
-            <ListChecks size={12} />
-            Se fuld indkøbsliste
-          </Link>
+          {status === "planned" && (
+            <button
+              type="button"
+              onClick={() => onStatusChange?.("cooking")}
+              className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
+            >
+              <ChefHat size={14} /> Start madlavning
+            </button>
+          )}
+          {status === "cooking" && (
+            <button
+              type="button"
+              onClick={handleMarkComplete}
+              className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
+            >
+              <CheckCircle2 size={14} /> Markér som lavet
+            </button>
+          )}
+          {status !== "completed" && (
+            <button
+              type="button"
+              onClick={() => setShowRecipe((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border border-(--color-border) text-(--color-text-muted) transition-colors hover:border-(--color-text-muted)/80 hover:text-(--color-text)"
+            >
+              {showRecipe ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showRecipe ? "Skjul fremgangsmåde" : "Se fremgangsmåde"}
+            </button>
+          )}
+          {status === "planned" && (
+            <Link
+              href={`/shopping-list?recipeId=${recipe.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border border-(--color-border) text-(--color-text-muted) transition-colors hover:border-(--color-text-muted)/80 hover:text-(--color-text)"
+            >
+              <ListChecks size={12} />
+              Se fuld indkøbsliste
+            </Link>
+          )}
         </div>
-
-        {/* ── Compact ingredient list (always visible) ──────────────── */}
-        {!loadingIng && ingredients.length > 0 && (() => {
-          const sorted = [
-            ...ingredients.filter(isMissing),
-            ...ingredients.filter((i) => !isMissing(i)),
-          ];
-          const MAX = 8;
-          const shown = ingExpanded ? sorted : sorted.slice(0, MAX);
-          const extra = sorted.length - MAX;
-          return (
-            <ul className="list-none p-0 m-0 mt-3 pt-3 border-t border-(--color-border)/50 flex flex-col">
-              {shown.map((ing) => {
-                const missing = isMissing(ing);
-                const onOffer = offerIngredientIds.has(ing.ingredient_id);
-                return (
-                  <li
-                    key={ing.id}
-                    onClick={() => toggleIngredient(ing.id)}
-                    className="flex justify-between items-center py-1.5 border-b border-(--color-border)/40 last:border-0 cursor-pointer hover:bg-(--color-bg)/50 rounded-sm -mx-1 px-1 transition-colors select-none"
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span className={cn(
-                        "w-3.5 h-3.5 shrink-0 rounded-full border flex items-center justify-center transition-colors",
-                        missing
-                          ? "border-(--color-danger)/50 bg-transparent"
-                          : "border-transparent bg-(--color-primary)/20",
-                      )}>
-                        {!missing && <Check size={9} className="text-(--color-primary)" strokeWidth={3} />}
-                      </span>
-                      <span className={cn(
-                        "text-sm truncate transition-colors",
-                        missing ? "text-(--color-danger) opacity-80" : "text-(--color-text-muted) line-through",
-                      )}>
-                        {ing.name}
-                      </span>
-                      {onOffer && (
-                        <Tag size={10} className="shrink-0 text-green-500 opacity-70" />
-                      )}
-                    </span>
-                    <span className="text-xs text-(--color-text-muted) ml-3 shrink-0">
-                      {formatAmount(ing.amount)} {ing.unit}
-                    </span>
-                  </li>
-                );
-              })}
-              {extra > 0 && (
-                <li className="pt-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setIngExpanded((v) => !v)}
-                    className="text-xs text-(--color-text-muted) hover:text-(--color-text) transition-colors cursor-pointer bg-transparent border-none p-0"
-                  >
-                    {ingExpanded ? "Vis færre" : `+${extra} flere`}
-                  </button>
-                </li>
-              )}
-            </ul>
-          );
-        })()}
 
       </div>
 
-      {/* ── Recipe expand: steps only ─────────────────────────────────────── */}
-      {showRecipe && (
-        <>
-          <div className="h-px bg-(--color-border) mx-5" />
+      {/* ── Responsive ingredients + steps grid ──────────────────────────── */}
+      {(!loadingIng && ingredients.length > 0 || showRecipe) && (
+        <div className={cn(
+          "grid gap-4 px-5 pb-5 pt-4 border-t border-(--color-border)/50",
+          showRecipe && !loadingIng && ingredients.length > 0
+            ? "grid-cols-1 md:grid-cols-2 md:gap-8"
+            : "grid-cols-1",
+        )}>
+          {/* Left col: ingredient list */}
+          {!loadingIng && ingredients.length > 0 && (() => {
+            const sorted = [
+              ...ingredients.filter(isMissing),
+              ...ingredients.filter((i) => !isMissing(i)),
+            ];
+            const MAX = 8;
+            const shown = ingExpanded ? sorted : sorted.slice(0, MAX);
+            const extra = sorted.length - MAX;
+            return (
+              <div className="md:sticky md:top-20 self-start">
+                <ul className="list-none p-0 m-0 flex flex-col">
+                  {shown.map((ing) => {
+                    const missing = isMissing(ing);
+                    const onOffer = offerIngredientIds.has(ing.ingredient_id);
+                    return (
+                      <li
+                        key={ing.id}
+                        onClick={() => toggleIngredient(ing.id)}
+                        className="flex justify-between items-center py-1.5 border-b border-(--color-border)/40 last:border-0 cursor-pointer hover:bg-(--color-surface-2) rounded-sm -mx-1 px-1 transition-colors select-none"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className={cn(
+                            "w-3.5 h-3.5 shrink-0 rounded-full border flex items-center justify-center transition-colors",
+                            missing
+                              ? "border-(--color-danger)/50 bg-transparent"
+                              : "border-transparent bg-(--color-primary)/20",
+                          )}>
+                            {!missing && <Check size={9} className="text-(--color-primary)" strokeWidth={3} />}
+                          </span>
+                          <span className={cn(
+                            "text-sm truncate transition-colors",
+                            missing ? "text-(--color-danger) opacity-80" : "text-(--color-text-muted) line-through",
+                          )}>
+                            {ing.name}
+                          </span>
+                          {onOffer && (
+                            <Tag size={10} className="shrink-0 text-(--color-saffron) opacity-80" />
+                          )}
+                        </span>
+                        <span className="text-xs text-(--color-text-muted) ml-3 shrink-0">
+                          {formatAmount(ing.amount)} {ing.unit}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {extra > 0 && (
+                    <li className="pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setIngExpanded((v) => !v)}
+                        className="text-xs text-(--color-text-muted) hover:text-(--color-text) transition-colors cursor-pointer bg-transparent border-none p-0"
+                      >
+                        {ingExpanded ? "Vis færre" : `+${extra} flere`}
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            );
+          })()}
 
-            {/* Steps */}
-            <div className="px-5 py-5">
+          {/* Right col: steps */}
+          {showRecipe && (
+            <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-(--color-text-muted) m-0">
                   Fremgangsmåde
@@ -353,7 +436,7 @@ export default function SelectedDayMealCard({
                           "flex items-start gap-3 rounded-xl px-3.5 py-3 border cursor-pointer transition-colors",
                           done
                             ? "bg-(--color-surface-2) border-(--color-border) opacity-50"
-                            : "bg-(--color-bg) border-(--color-border) hover:border-(--color-primary)",
+                            : "bg-(--color-surface-2) border-(--color-border) hover:border-(--color-primary)",
                         )}
                       >
                         <span className="shrink-0 mt-0.5 text-(--color-primary)">
@@ -373,7 +456,8 @@ export default function SelectedDayMealCard({
                 </ol>
               )}
             </div>
-        </>
+          )}
+        </div>
       )}
     </div>
   );

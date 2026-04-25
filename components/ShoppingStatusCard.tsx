@@ -33,7 +33,7 @@ export default function ShoppingStatusCard({
   }, [familyId, weekStart]);
 
   return (
-    <div className="bg-(--color-bg) border border-(--color-border)/60 rounded-xl px-4 py-3 flex items-center gap-3">
+    <div className="bg-(--color-surface) border border-(--color-border) rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
       <div className="flex-1 min-w-0">
         <p className="text-xs text-(--color-text-muted) m-0 leading-snug">
           <span className="font-medium text-(--color-text)">

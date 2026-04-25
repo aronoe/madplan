@@ -7,37 +7,49 @@
 
 /* ─── Semantic design tokens ──────────────────────────────────── */
 :root {
-  /* Surfaces */
-  --color-bg:          #ffffff;
-  --color-surface:     #f9fafb;       /* neutral-50 */
-  --color-surface-2:   #f3f4f6;       /* neutral-100 */
-  --color-border:      #e5e7eb;       /* neutral-200 */
-  --color-border-focus:#6ee7b7;       /* emerald-300 */
+  /* Page background — cream only on the outermost shell */
+  --color-page-bg:     #FFF4E1;       /* warm cream: body / AppShell only */
+
+  /* Component surfaces — white so cards pop against the cream page */
+  --color-bg:          #FFFFFF;       /* neutral-0: inputs, inline elements, empty slots */
+  --color-bg-subtle:   #F2F2F0;       /* neutral-100: tab-bar containers, pill backgrounds */
+  --color-surface:     #FFFFFF;       /* neutral-0: main cards, panels, modals */
+  --color-surface-2:   #F2F2F0;       /* neutral-100: hover states, secondary surfaces */
+  --color-border:      #E6E6E3;       /* neutral-200 */
+  --color-border-focus:#FBBF24;       /* saffron-300 */
 
   /* Text */
-  --color-text:        #111827;       /* neutral-900 */
-  --color-text-mid:    #374151;       /* neutral-700 */
-  --color-text-muted:  #6b7280;       /* neutral-500 */
+  --color-text:        #1F1F1F;       /* neutral-900 */
+  --color-text-mid:    #4A4A4A;       /* between neutral-600/700 */
+  --color-text-muted:  #666666;       /* neutral-600 */
 
-  /* Accent (emerald) */
-  --color-primary:     #10b981;       /* emerald-500 */
-  --color-primary-hover:#059669;      /* emerald-600 */
-  --color-primary-subtle:#d1fae5;     /* emerald-100 */
-  --color-primary-text:#065f46;       /* emerald-900 */
+  /* Primary = success green (CTA buttons, checkboxes, progress) */
+  --color-primary:       #22C55E;     /* success-500 */
+  --color-primary-hover: #16A34A;     /* green-600 */
+  --color-primary-subtle:#DCFCE7;     /* success-100 */
+  --color-primary-text:  #15803D;     /* green-700 */
+
+  /* Saffron / brand accent (offers, highlights, selection) */
+  --color-saffron:        #F59E0B;    /* saffron-400 */
+  --color-saffron-hover:  #D97706;    /* amber-600 */
+  --color-saffron-subtle: #FFF8E6;    /* saffron-50 */
+  --color-saffron-text:   #92400E;    /* saffron-700 */
 
   /* States */
-  --color-danger:      #ef4444;
-  --color-danger-subtle:#fef2f2;
-  --color-warning-subtle:#fffbeb;
-  --color-warning-border:#fcd34d;
+  --color-danger:         #EF4444;    /* danger-500 */
+  --color-danger-subtle:  #FEE2E2;    /* danger-100 */
+  --color-warning:        #F59E0B;    /* warning-500 (= saffron-400) */
+  --color-warning-subtle: #FEF3C7;    /* warning-100 */
+  --color-warning-border: #FBBF24;    /* warning-300 */
+  --color-warning-text:   #92400E;    /* saffron-700: readable on warning-subtle */
 
   /* Nav */
-  --color-nav-bg:      #ffffff;
-  --color-nav-shadow:  0 1px 0 0 #e5e7eb;
-  --color-active-bg:   #ecfdf5;       /* emerald-50 */
+  --color-nav-bg:      #FFFFFF;
+  --color-nav-shadow:  0 1px 0 0 #E6E6E3;
+  --color-active-bg:   #FFF8E6;       /* saffron-50 */
 
   /* Legacy aliases — gradually remove */
-  --c-page-bg:         var(--color-bg);
+  --c-page-bg:         var(--color-page-bg);
   --c-nav-bg:          var(--color-nav-bg);
   --c-nav-shadow:      var(--color-nav-shadow);
   --c-card-bg:         var(--color-surface);
@@ -50,43 +62,55 @@
   --c-text-muted:      var(--color-text-muted);
   --c-text-body:       var(--color-text);
   --c-slot-empty:      var(--color-surface-2);
-  --c-slot-over:       var(--color-primary-subtle);
-  --c-tag-bg:          var(--color-primary-subtle);
-  --c-tag-text:        var(--color-primary-text);
+  --c-slot-over:       var(--color-saffron-subtle);
+  --c-tag-bg:          var(--color-saffron-subtle);
+  --c-tag-text:        var(--color-saffron-text);
 }
 
 .dark {
-  /* Surfaces — not pure black, subtle layering */
-  --color-bg:          #111113;       /* near-black with slight warmth */
-  --color-surface:     #1c1c1f;       /* cards, panels */
-  --color-surface-2:   #28282c;       /* hover states, inputs */
-  --color-border:      #2e2e33;       /* softer than zinc-700 */
-  --color-border-focus:#6ee7b7;       /* emerald-300 */
+  /* Page background */
+  --color-page-bg:     #111113;
 
-  /* Text — balanced, not harsh white */
-  --color-text:        #ececee;       /* slightly off-white */
-  --color-text-mid:    #b8b8bf;       /* secondary labels */
-  --color-text-muted:  #87878f;       /* placeholders, captions */
+  /* Component surfaces */
+  --color-bg:          #111113;
+  --color-bg-subtle:   #1c1c1f;
+  --color-surface:     #1c1c1f;
+  --color-surface-2:   #28282c;
+  --color-border:      #2e2e33;
+  --color-border-focus:#FBBF24;
 
-  /* Accent — emerald-400 reads better on dark than 500 */
-  --color-primary:     #34d399;       /* emerald-400 */
-  --color-primary-hover:#6ee7b7;      /* emerald-300 for hover */
-  --color-primary-subtle:#0d2b1e;     /* subtle tinted surface */
-  --color-primary-text:#a7f3d0;       /* emerald-200 for colored text */
+  /* Text */
+  --color-text:        #ececee;
+  --color-text-mid:    #b8b8bf;
+  --color-text-muted:  #87878f;
+
+  /* Primary — emerald-400 reads better on dark than success-500 */
+  --color-primary:       #34d399;     /* emerald-400 */
+  --color-primary-hover: #6ee7b7;     /* emerald-300 */
+  --color-primary-subtle:#0d2b1e;
+  --color-primary-text:  #a7f3d0;     /* emerald-200 */
+
+  /* Saffron / brand accent (dark mode) */
+  --color-saffron:        #FCD34D;    /* amber-300, bright on dark */
+  --color-saffron-hover:  #FDE68A;    /* amber-200 */
+  --color-saffron-subtle: #1C1200;    /* very dark amber */
+  --color-saffron-text:   #FDE68A;    /* amber-200 */
 
   /* States */
-  --color-danger:      #f87171;
-  --color-danger-subtle:#380c0c;
-  --color-warning-subtle:#3b1a06;
-  --color-warning-border:#854d0e;
+  --color-danger:         #f87171;
+  --color-danger-subtle:  #380c0c;
+  --color-warning:        #FCD34D;    /* amber-300 on dark */
+  --color-warning-subtle: #1C1200;
+  --color-warning-border: #854d0e;
+  --color-warning-text:   #FDE68A;    /* amber-200 */
 
   /* Nav */
   --color-nav-bg:      #1c1c1f;
   --color-nav-shadow:  0 1px 0 0 #2e2e33;
-  --color-active-bg:   #0d2b1e;
+  --color-active-bg:   #1C1200;       /* warm dark saffron tint */
 
   /* Legacy aliases */
-  --c-page-bg:         var(--color-bg);
+  --c-page-bg:         var(--color-page-bg);
   --c-nav-bg:          var(--color-nav-bg);
   --c-nav-shadow:      var(--color-nav-shadow);
   --c-card-bg:         var(--color-surface);
@@ -99,13 +123,13 @@
   --c-text-muted:      var(--color-text-muted);
   --c-text-body:       var(--color-text);
   --c-slot-empty:      var(--color-surface-2);
-  --c-slot-over:       var(--color-primary-subtle);
-  --c-tag-bg:          var(--color-primary-subtle);
-  --c-tag-text:        var(--color-primary-text);
+  --c-slot-over:       var(--color-saffron-subtle);
+  --c-tag-bg:          var(--color-saffron-subtle);
+  --c-tag-text:        var(--color-saffron-text);
 }
 
 body {
-  background-color: var(--color-bg);
+  background-color: var(--color-page-bg);
   color: var(--color-text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }

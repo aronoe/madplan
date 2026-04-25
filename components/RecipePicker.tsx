@@ -98,8 +98,8 @@ export default function RecipePicker({
               className={cn(
                 "border rounded-full px-3 py-1 font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1",
                 onlyOffers
-                  ? "bg-green-100 text-green-700 border-green-400"
-                  : "bg-(--color-bg) text-(--color-text-mid) border-(--color-border) hover:border-green-400",
+                  ? "bg-(--color-saffron-subtle) text-(--color-saffron-text) border-(--color-saffron)"
+                  : "bg-(--color-bg) text-(--color-text-mid) border-(--color-border) hover:border-(--color-saffron)",
               )}
             >
               <Tag size={10} />
@@ -126,7 +126,7 @@ export default function RecipePicker({
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 border-none rounded-[10px] cursor-pointer text-left w-full transition-colors",
                       highlighted
-                        ? "bg-green-50 ring-1 ring-green-300 hover:bg-green-100"
+                        ? "bg-(--color-saffron-subtle) ring-1 ring-(--color-saffron)/40 hover:brightness-95"
                         : "bg-transparent hover:bg-(--color-active-bg)",
                     )}
                   >
@@ -135,7 +135,7 @@ export default function RecipePicker({
                       {r.name}
                     </span>
                     {matchCount > 0 && (
-                      <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">
+                      <span className="text-[10px] font-semibold text-(--color-saffron-text) bg-(--color-saffron-subtle) border border-(--color-saffron)/30 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">
                         {matchCount} på tilbud
                       </span>
                     )}

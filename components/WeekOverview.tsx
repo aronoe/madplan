@@ -19,7 +19,8 @@ import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { Fragment } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Zap, Trash2, Pencil, Check, X, RefreshCw, ShoppingCart } from "lucide-react";
+import { ChevronDown, ChevronUp, Zap, Trash2, Pencil, Check, X, RefreshCw, ShoppingCart, CheckCircle2 } from "lucide-react";
+import type { MealStatus } from "@/lib/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ interface DaySlot {
   recipeId: string;
   name: string;
   emoji: string;
+  status: MealStatus;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -127,12 +129,14 @@ export default function WeekOverview({
           day_of_week: number;
           recipe_id: string;
           recipe: { name: string; emoji: string } | null;
+          status?: string;
         }>) {
           if (entry.day_of_week >= 0 && entry.day_of_week < 7) {
             grid[entry.day_of_week] = {
               recipeId: entry.recipe_id,
               name: entry.recipe?.name ?? "Ukendt ret",
               emoji: entry.recipe?.emoji ?? "🍽️",
+              status: (entry.status ?? "planned") as MealStatus,
             };
           }
         }
@@ -338,7 +342,7 @@ export default function WeekOverview({
                           key={d}
                           className={cn(
                             "w-2.5 h-2.5 rounded-full shrink-0",
-                            planned ? "bg-green-500" : "bg-gray-200 opacity-60",
+                            planned ? "bg-(--color-primary)" : "bg-(--color-border) opacity-60",
                           )}
                         />
                       );
@@ -358,7 +362,7 @@ export default function WeekOverview({
 
             {/* ── Expanded section ── */}
             {isExpanded && (
-              <div className="border-t border-(--color-border) bg-(--color-bg) px-5 pt-4 pb-5 flex flex-col gap-4">
+              <div className="border-t border-(--color-border) bg-(--color-surface-2) px-5 pt-4 pb-5 flex flex-col gap-4">
 
                 {/* Action row */}
                 <div className="flex items-center gap-2 pb-3 border-b border-(--color-border)">
@@ -462,7 +466,18 @@ export default function WeekOverview({
                           {/* Recipe or empty */}
                           <div className={cn("flex items-center gap-2 py-2 min-w-0", rowBorder)}>
                             {slot ? (
-                              <span className="text-sm text-(--color-text) truncate">{slot.name}</span>
+                              <>
+                                {slot.status === "completed" && (
+                                  <CheckCircle2 size={13} className="shrink-0 text-(--color-primary)" />
+                                )}
+                                {slot.status === "cooking" && (
+                                  <span className="w-2 h-2 shrink-0 rounded-full bg-(--color-warning)" />
+                                )}
+                                <span className={cn(
+                                  "text-sm truncate",
+                                  slot.status === "completed" ? "text-(--color-text-muted) line-through" : "text-(--color-text)",
+                                )}>{slot.name}</span>
+                              </>
                             ) : isEditing ? (
                               <span className="text-sm italic text-(--color-text-muted)/40 select-none">+ Tilføj opskrift</span>
                             ) : (
