@@ -5,14 +5,12 @@ import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 
-const EMOJIS = ["🍕","🍝","🌮","🍜","🥗","🍲","🥘","🍛","🥩","🐟","🍗","🥚","🫕","🍱","🥪","🫔","🌯","🍔","🌭","🥞"];
-
 export const CATEGORIES = [
-  "Dansk klassisk",
-  "Italiensk inspireret",
-  "Internationalt mix",
+  "Hverdagsretter",
   "Supper og gryder",
-  "Grill og ovn",
+  "Ovne-retter",
+  "Pasta og ris",
+  "Salater og lette retter",
 ];
 
 export const DEFAULT_FORM = {
@@ -52,68 +50,55 @@ function RecipeFields({
   set: (patch: Partial<RecipeFormValues>) => void;
 }) {
   return (
-    <>
-      <div className="flex gap-3 items-start">
-        <div>
-          <label className={labelClass}>Emoji</label>
-          <select
-            value={form.emoji}
-            onChange={(e) => set({ emoji: e.target.value })}
-            className={cn(selectClass, "w-17.5 text-center text-xl px-1 py-1.5")}
-          >
-            {EMOJIS.map((em) => <option key={em} value={em}>{em}</option>)}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className={labelClass}>Navn *</label>
-          <Input
-            type="text"
-            placeholder="f.eks. Spaghetti bolognese"
-            value={form.name}
-            onChange={(e) => set({ name: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Tid (min)</label>
-          <Input
-            type="number"
-            min={5}
-            max={300}
-            value={form.time_minutes}
-            onChange={(e) => set({ time_minutes: Number(e.target.value) })}
-            className="w-20"
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className={labelClass}>Kategori (valgfrit)</label>
-          <select
-            value={form.category}
-            onChange={(e) => set({ category: e.target.value })}
-            className={selectClass}
-          >
-            <option value="">— Ingen kategori —</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass}>Portioner</label>
-          <Input
-            type="number"
-            min={1}
-            max={20}
-            value={form.servings}
-            onChange={(e) => set({ servings: Number(e.target.value) })}
-            className="w-20"
-          />
-        </div>
-      </div>
-
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_108px] gap-x-3 gap-y-4">
+      {/* Row 1: Name + Time */}
       <div>
-        <label className={labelClass}>Tags (kommasepareret, valgfrit)</label>
+        <label className={labelClass}>Navn *</label>
+        <Input
+          type="text"
+          placeholder="f.eks. Spaghetti bolognese"
+          value={form.name}
+          onChange={(e) => set({ name: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Tid (min)</label>
+        <Input
+          type="number"
+          min={5}
+          max={300}
+          value={form.time_minutes}
+          onChange={(e) => set({ time_minutes: Number(e.target.value) })}
+        />
+      </div>
+
+      {/* Row 2: Category + Servings */}
+      <div>
+        <label className={labelClass}>Kategori</label>
+        <select
+          value={form.category}
+          onChange={(e) => set({ category: e.target.value })}
+          className={selectClass}
+        >
+          <option value="">— Ingen kategori —</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>Portioner</label>
+        <Input
+          type="number"
+          min={1}
+          max={20}
+          value={form.servings}
+          onChange={(e) => set({ servings: Number(e.target.value) })}
+        />
+      </div>
+
+      {/* Row 3: Tags — full width */}
+      <div className="sm:col-span-2">
+        <label className={labelClass}>Tags <span className="normal-case font-normal opacity-60">(kommasepareret, valgfrit)</span></label>
         <Input
           type="text"
           placeholder="f.eks. pasta, nem, vegetar"
@@ -121,7 +106,7 @@ function RecipeFields({
           onChange={(e) => set({ tags: e.target.value })}
         />
       </div>
-    </>
+    </div>
   );
 }
 

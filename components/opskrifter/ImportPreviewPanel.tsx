@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import type { ParsedIngredient } from "@/lib/ingredient-parser";
+import { cn } from "@/lib/cn";
 
 interface Props {
   imageUrl: string | null;
@@ -32,8 +33,10 @@ export default function ImportPreviewPanel({
 }: Props) {
   const [showSteps, setShowSteps] = useState(false);
 
-  const nonHighCount = ingredients.filter((r) => r.confidence !== "high").length;
+  const total = ingredients.length;
+  const readyCount = ingredients.filter((r) => r.confidence === "high" && !isBlocking(r)).length;
   const blockingCount = ingredients.filter(isBlocking).length;
+  const pct = total === 0 ? 100 : Math.round((readyCount / total) * 100);
 
   function updateRow(index: number, patch: Partial<ParsedIngredient>) {
     onChange(ingredients.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -50,30 +53,43 @@ export default function ImportPreviewPanel({
         />
       )}
 
-      {/* Warning / info banner */}
-      {nonHighCount > 0 && (
-        <div
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${
-            blockingCount > 0
-              ? "bg-red-50 border-red-200 text-red-700"
-              : "bg-amber-50 border-amber-200 text-amber-700"
-          }`}
-        >
-          <AlertTriangle size={14} className="shrink-0" />
-          <span>
-            {blockingCount > 0
-              ? `${blockingCount} ${blockingCount === 1 ? "ingrediens skal rettes" : "ingredienser skal rettes"} før du kan gemme`
-              : `${nonHighCount} ${nonHighCount === 1 ? "ingrediens skal tjekkes" : "ingredienser skal tjekkes"}`}
-          </span>
-        </div>
-      )}
-
-      {/* Ingredients table */}
+      {/* Ingredients section */}
       {ingredients.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold uppercase tracking-wide text-(--color-text-muted)">
-            Ingredienser ({ingredients.length})
-          </span>
+        <div className="flex flex-col gap-3">
+          {/* Section header */}
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold text-(--color-text)">
+              Ingredienser
+            </h3>
+            <span className="text-xs text-(--color-text-muted)">
+              {readyCount === total
+                ? "Alle klar"
+                : `${readyCount} / ${total} klar`}
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-1.5 rounded-full bg-(--color-border) overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-300",
+                readyCount === total ? "bg-(--color-primary)" : "bg-(--color-warning)",
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+
+          {/* Blocking error — must fix before saving */}
+          {blockingCount > 0 && (
+            <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border bg-(--color-danger-subtle) border-(--color-danger) text-(--color-danger)">
+              <AlertTriangle size={14} className="shrink-0" />
+              <span>
+                {blockingCount === 1
+                  ? "1 ingrediens skal rettes før du kan gemme"
+                  : `${blockingCount} ingredienser skal rettes før du kan gemme`}
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-[72px_72px_1fr] gap-1.5 px-1">
             {["Mængde", "Enhed", "Ingrediens"].map((h) => (
@@ -91,19 +107,20 @@ export default function ImportPreviewPanel({
               return (
                 <div key={i} className="flex flex-col gap-0.5">
                   <div
-                    className={`grid grid-cols-[72px_72px_1fr] gap-1.5 rounded-lg px-1 py-0.5 ${
+                    className={cn(
+                      "grid grid-cols-[72px_72px_1fr] gap-1.5 rounded-lg px-1 py-0.5 border",
                       blocking
-                        ? "bg-red-50 border border-red-200"
+                        ? "bg-(--color-danger-subtle) border-(--color-danger)"
                         : warn
-                        ? "bg-amber-50/60 border border-amber-100"
-                        : "border border-transparent"
-                    }`}
+                        ? "bg-(--color-warning-subtle) border-(--color-warning-border)"
+                        : "border-transparent",
+                    )}
                   >
                     <input type="text" value={row.amount} onChange={(e) => updateRow(i, { amount: e.target.value })} placeholder="—" className={inputClass} aria-label="Mængde" />
                     <input type="text" value={row.unit} onChange={(e) => updateRow(i, { unit: e.target.value })} placeholder="—" className={inputClass} aria-label="Enhed" />
                     <input type="text" value={row.name} onChange={(e) => updateRow(i, { name: e.target.value })} placeholder="Ingrediens" required className={inputClass} aria-label="Ingrediens" />
                   </div>
-                  {hint && <p className="text-[11px] text-amber-600 pl-1.5">{hint}</p>}
+                  {hint && <p className="text-[11px] text-(--color-warning-text) pl-1.5">{hint}</p>}
                 </div>
               );
             })}

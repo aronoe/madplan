@@ -355,19 +355,22 @@ export async function setQueueOrder(
 export async function getMealPlanSummaries(
   familyId: string,
   weekStarts: string[],
-): Promise<Record<string, number[]>> {
+): Promise<Record<string, { day: number; status: MealStatus }[]>> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("meal_plan")
-    .select("week_start, day_of_week")
+    .select("week_start, day_of_week, status")
     .eq("family_id", familyId)
     .in("week_start", weekStarts)
     .not("recipe_id", "is", null);
   if (error) throw error;
-  const result: Record<string, number[]> = {};
+  const result: Record<string, { day: number; status: MealStatus }[]> = {};
   for (const ws of weekStarts) result[ws] = [];
-  for (const row of (data ?? []) as { week_start: string; day_of_week: number }[]) {
-    result[row.week_start].push(row.day_of_week);
+  for (const row of (data ?? []) as { week_start: string; day_of_week: number; status: string | null }[]) {
+    result[row.week_start].push({
+      day: row.day_of_week,
+      status: (row.status ?? "planned") as MealStatus,
+    });
   }
   return result;
 }

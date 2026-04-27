@@ -12,15 +12,17 @@ import {
 import type { Recipe } from "@/lib/types";
 import type { ParsedIngredient } from "@/lib/ingredient-parser";
 import type { ParsedRecipe } from "@/app/api/recipe-import/route";
+import { classifyRecipe } from "@/lib/classifyRecipe";
 import RecipeView from "@/components/RecipeView";
 import RecipeForm, { DEFAULT_FORM, type RecipeFormValues } from "@/components/opskrifter/RecipeForm";
 import RecipeFilters from "@/components/opskrifter/RecipeFilters";
 import RecipeCard from "@/components/opskrifter/RecipeCard";
+import RecipeListItem from "@/components/opskrifter/RecipeListItem";
 import RecipeImportSection from "@/components/opskrifter/RecipeImportSection";
 import ImportPreviewPanel from "@/components/opskrifter/ImportPreviewPanel";
-import SectionHeader from "@/components/ui/SectionHeader";
 import Card from "@/components/ui/Card";
-import { Plus, ChevronUp } from "lucide-react";
+import { Search, Plus, ArrowLeft, LayoutGrid, List } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 function isBlockingRow(row: ParsedIngredient): boolean {
   return row.amount !== "" && !isFinite(parseFloat(row.amount.replace(",", ".")));
@@ -44,6 +46,11 @@ export default function OpskrifterKlient({
   const [createMode, setCreateMode] = useState<"auto" | "manual">("auto");
   const [viewingRecipe, setViewingRecipe] = useState<Recipe | null>(null);
 
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window === "undefined") return "grid";
+    return (localStorage.getItem("recipeViewMode") as "grid" | "list") ?? "grid";
+  });
+
   const [importedData, setImportedData] = useState<ParsedRecipe | null>(null);
   const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>([]);
 
@@ -63,11 +70,19 @@ export default function OpskrifterKlient({
   function handleImport(data: ParsedRecipe) {
     setImportedData(data);
     setParsedIngredients(data.ingredients);
+    const { category, tags } = classifyRecipe(
+      data.title,
+      data.ingredients.map((i) => i.name),
+      "",
+      data.time_minutes ?? undefined,
+    );
     setForm({
       ...DEFAULT_FORM,
       name: data.title,
       time_minutes: data.time_minutes ?? DEFAULT_FORM.time_minutes,
       servings: data.servings ?? DEFAULT_FORM.servings,
+      category,
+      tags: tags.join(", "),
     });
     setError("");
   }
@@ -185,61 +200,68 @@ export default function OpskrifterKlient({
   // True when we have a full imported recipe ready to review + save
   const showAutoReview = createMode === "auto" && importedData !== null;
 
-  return (
-    <div className="space-y-6">
+  if (showForm) {
+    return (
+      <div className="space-y-4">
 
-      {/* Page header */}
-      <div className="flex items-center justify-between gap-4">
-        <SectionHeader>Opskrifter</SectionHeader>
-        <button
-          type="button"
-          onClick={showForm ? handleCloseForm : () => setShowForm(true)}
-          className="inline-flex items-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover)"
-        >
-          {showForm ? <ChevronUp size={15} /> : <Plus size={15} />}
-          {showForm ? "Luk" : "Tilføj opskrift"}
-        </button>
-      </div>
-
-      {/* Create area */}
-      {showForm && (
-        <div className="flex flex-col gap-4">
-          {/* Mode tabs — Auto is first and primary */}
-          <div className="flex gap-1 p-1 bg-(--color-bg-subtle) rounded-lg self-start">
-            {(["auto", "manual"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => switchMode(mode)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                  createMode === mode
-                    ? "bg-(--color-bg) text-(--color-text) shadow-sm"
-                    : "text-(--color-text-muted) hover:text-(--color-text)"
-                }`}
-              >
-                {mode === "auto" ? "Auto" : "Manuel"}
-              </button>
-            ))}
+        {/* ── Add mode header ─────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-(--color-text) leading-snug">
+              Tilføj ny opskrift
+            </h2>
+            <p className="text-sm text-(--color-text-muted) mt-0.5">
+              Importér via link eller opret manuelt.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={handleCloseForm}
+            className="inline-flex items-center gap-1.5 border border-(--color-border) text-(--color-text-muted) rounded-lg px-3 py-1.5 text-sm font-medium cursor-pointer transition-colors hover:border-(--color-text-muted) hover:text-(--color-text) shrink-0"
+          >
+            <ArrowLeft size={14} />
+            Tilbage
+          </button>
+        </div>
 
-          {/* ── Auto mode ── */}
-          {createMode === "auto" && !importedData && (
-            <RecipeImportSection onImport={handleImport} />
-          )}
+        {/* ── Auto / Manuel toggle ─────────────────────────────────────────── */}
+        <div className="flex gap-1 p-1 bg-(--color-bg-subtle) rounded-xl self-start">
+          {(["auto", "manual"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => switchMode(mode)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                createMode === mode
+                  ? "bg-(--color-bg) text-(--color-text) shadow-sm"
+                  : "text-(--color-text-muted) hover:text-(--color-text)",
+              )}
+            >
+              {mode === "auto" ? "Auto" : "Manuel"}
+            </button>
+          ))}
+        </div>
 
-          {showAutoReview && (
-            <>
-              <Card padding="lg" className="flex flex-col gap-4">
-                {/* Image at top */}
-                {importedData!.image_url && (
-                  <img
-                    src={importedData!.image_url}
-                    alt="Opskriftsbillede"
-                    className="w-full h-48 object-cover rounded-xl -mt-1"
-                  />
-                )}
+        {/* ── Form content ─────────────────────────────────────────────────── */}
+        {createMode === "auto" && !importedData && (
+          <RecipeImportSection onImport={handleImport} />
+        )}
 
-                {/* Inline fields (no card wrapper, no heading) */}
+        {showAutoReview && (
+          <>
+            <Card padding="lg" className="flex flex-col gap-5">
+              {importedData!.image_url && (
+                <img
+                  src={importedData!.image_url}
+                  alt="Opskriftsbillede"
+                  className="w-full h-48 object-cover rounded-xl -mt-1"
+                />
+              )}
+
+              {/* Grundinfo */}
+              <div className="flex flex-col gap-3">
+                <h3 className="text-sm font-semibold text-(--color-text)">Grundinfo</h3>
                 <RecipeForm
                   form={form}
                   saving={saving}
@@ -248,62 +270,118 @@ export default function OpskrifterKlient({
                   onSubmit={handleSubmit}
                   variant="inline"
                 />
-
-                {/* Ingredients + steps */}
-                <ImportPreviewPanel
-                  imageUrl={null}
-                  ingredients={parsedIngredients}
-                  steps={importedData!.steps}
-                  onChange={setParsedIngredients}
-                />
-              </Card>
-
-              {/* Sticky CTA */}
-              <div className="sticky bottom-0 z-10 bg-(--color-bg) border-t border-(--color-border) -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={doSave}
-                  disabled={saving || !form.name.trim()}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center bg-(--color-primary) text-white rounded-lg px-5 py-2.5 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover) disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Gemmer…" : "Gem opskrift"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseForm}
-                  className="inline-flex items-center justify-center border border-(--color-border) text-(--color-text) rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-bg-subtle)"
-                >
-                  Annuller
-                </button>
-                {error && <p className="flex-1 text-sm text-(--color-danger) self-center">{error}</p>}
               </div>
-            </>
-          )}
 
-          {/* ── Manuel mode ── */}
-          {createMode === "manual" && (
-            <RecipeForm
-              form={form}
-              saving={saving}
-              error={error}
-              onChange={setForm}
-              onSubmit={handleSubmit}
-            />
-          )}
+              <div className="border-t border-(--color-border)" />
+
+              <ImportPreviewPanel
+                imageUrl={null}
+                ingredients={parsedIngredients}
+                steps={importedData!.steps}
+                onChange={setParsedIngredients}
+              />
+            </Card>
+
+            {/* Sticky save bar */}
+            <div className="sticky bottom-0 z-10 bg-(--color-bg) border-t border-(--color-border) -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 flex gap-2">
+              <button
+                type="button"
+                onClick={doSave}
+                disabled={saving || !form.name.trim() || parsedIngredients.some(isBlockingRow)}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center bg-(--color-primary) text-white rounded-lg px-5 py-2.5 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover) disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Gemmer…" : "Gem opskrift"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseForm}
+                className="inline-flex items-center justify-center border border-(--color-border) text-(--color-text) rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-bg-subtle)"
+              >
+                Annuller
+              </button>
+              {error && <p className="flex-1 text-sm text-(--color-danger) self-center">{error}</p>}
+            </div>
+          </>
+        )}
+
+        {createMode === "manual" && (
+          <RecipeForm
+            form={form}
+            saving={saving}
+            error={error}
+            onChange={setForm}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Browse control bar: toggle · search · add ───────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex gap-1 p-1 bg-(--color-bg-subtle) rounded-xl shrink-0 self-start sm:self-auto">
+          {([
+            { value: "grid", label: "Kort", Icon: LayoutGrid },
+            { value: "list", label: "Liste", Icon: List },
+          ] as const).map(({ value, label, Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setViewMode(value);
+                localStorage.setItem("recipeViewMode", value);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                viewMode === value
+                  ? "bg-(--color-bg) text-(--color-text) shadow-sm"
+                  : "text-(--color-text-muted) hover:text-(--color-text)",
+              )}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Search + filters */}
-      <div>
-        <RecipeFilters
-          search={search}
-          activeCategory={activeCategory}
-          onSearchChange={setSearch}
-          onCategoryChange={setActiveCategory}
-        />
+        <div className="relative flex-1">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-(--color-text-muted) pointer-events-none"
+          />
+          <input
+            type="text"
+            placeholder="Søg i opskrifter…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={cn(
+              "w-full rounded-lg border bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-muted)",
+              "border-(--color-border) focus:outline-none focus:border-(--color-primary) focus:ring-1 focus:ring-(--color-primary)",
+              "px-3 py-2 pl-9 text-sm transition-colors",
+            )}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="inline-flex items-center justify-center gap-1.5 bg-(--color-primary) text-white rounded-lg px-3.5 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-(--color-primary-hover) shrink-0"
+        >
+          <Plus size={15} />
+          Tilføj opskrift
+        </button>
       </div>
 
-      {/* Recipe grid */}
+      {/* ── Category chips ───────────────────────────────────────────────────── */}
+      <RecipeFilters
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
+
+      {/* ── Recipe grid / list ───────────────────────────────────────────────── */}
       {loading ? (
         <div className="text-(--color-text-muted) text-sm py-5">Henter opskrifter…</div>
       ) : filtered.length === 0 ? (
@@ -312,25 +390,30 @@ export default function OpskrifterKlient({
             ? "Ingen opskrifter endnu — klik \"Tilføj opskrift\" for at komme i gang."
             : "Ingen opskrifter matcher din søgning."}
         </div>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filtered.map((r) => (
+            <RecipeCard
+              key={r.id}
+              recipe={r}
+              onClick={() => setViewingRecipe(r)}
+              onToggleFavorite={handleToggleFavorite}
+              onToggleQueue={handleToggleQueue}
+            />
+          ))}
+        </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {filtered.map((r) => (
-              <RecipeCard
-                key={r.id}
-                recipe={r}
-                onClick={() => setViewingRecipe(r)}
-                onToggleFavorite={handleToggleFavorite}
-                onToggleQueue={handleToggleQueue}
-              />
-            ))}
-          </div>
-          {recipes.length > 0 && (
-            <p className="text-(--color-text-muted) text-xs mt-1">
-              Viser {filtered.length} af {recipes.length} opskrifter
-            </p>
-          )}
-        </>
+        <div className="rounded-xl border border-(--color-border) bg-(--color-surface) overflow-hidden">
+          {filtered.map((r) => (
+            <RecipeListItem
+              key={r.id}
+              recipe={r}
+              onClick={() => setViewingRecipe(r)}
+              onToggleFavorite={handleToggleFavorite}
+              onToggleQueue={handleToggleQueue}
+            />
+          ))}
+        </div>
       )}
 
       {/* Recipe detail modal */}

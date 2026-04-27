@@ -19,7 +19,9 @@ import type { Recipe } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { Fragment } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Zap, Trash2, Pencil, Check, X, RefreshCw, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Zap, Trash2, Pencil, Check, X, RefreshCw, ShoppingCart } from "lucide-react";
+import WeekDot from "@/components/ui/WeekDot";
+import WeekProgressDots from "@/components/WeekProgressDots";
 import type { MealStatus } from "@/lib/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ export default function WeekOverview({
     addWeeks(currentWeekStart, i),
   );
 
-  const [summaries, setSummaries] = useState<Record<string, number[]>>({});
+  const [summaries, setSummaries] = useState<Record<string, { day: number; status: MealStatus }[]>>({});
   const [loadingSummaries, setLoadingSummaries] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -180,7 +182,9 @@ export default function WeekOverview({
           await setMeal(familyId, ws, i, expandedSlots[i]!.recipeId);
         }
       }
-      const plannedDays = expandedSlots.map((s, i) => s ? i : -1).filter((i): i is number => i >= 0);
+      const plannedDays = expandedSlots
+        .map((s, i) => s ? { day: i, status: s.status } : null)
+        .filter((x): x is { day: number; status: MealStatus } => x !== null);
       setSummaries((prev) => ({ ...prev, [ws]: plannedDays }));
       setOriginalSlots(null);
       setIsEditing(false);
@@ -228,7 +232,7 @@ export default function WeekOverview({
 
       setExpandedWeek(ws);
       setExpandedSlots(newGrid);
-      setSummaries((prev) => ({ ...prev, [ws]: plan.map((_, i) => i) }));
+      setSummaries((prev) => ({ ...prev, [ws]: plan.map((_, i) => ({ day: i, status: "planned" as MealStatus })) }));
       setMissingCount(newIngredients.filter((ing) => !checkedIds.has(ing.id)).length);
       if (ws === getWeekStart(0)) invalidateCurrentWeekBadge();
       if (queuedUsed.length > 0) onQueueChanged?.();
@@ -249,7 +253,7 @@ export default function WeekOverview({
     try {
       await clearWeekMeals(familyId, ws);
       setExpandedSlots(Array(7).fill(null));
-      setSummaries((prev) => ({ ...prev, [ws]: [] }));
+      setSummaries((prev) => ({ ...prev, [ws]: [] as { day: number; status: MealStatus }[] }));
       setMissingCount(0);
       setIsEditing(false);
       setOriginalSlots(null);
@@ -334,20 +338,9 @@ export default function WeekOverview({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {/* 7-day dots */}
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({ length: 7 }, (_, d) => {
-                      const planned = !loadingSummaries && (summaries[ws] ?? []).includes(d);
-                      return (
-                        <span
-                          key={d}
-                          className={cn(
-                            "w-2.5 h-2.5 rounded-full shrink-0",
-                            planned ? "bg-(--color-primary)" : "bg-(--color-border) opacity-60",
-                          )}
-                        />
-                      );
-                    })}
-                  </div>
+                  <WeekProgressDots
+                    days={loadingSummaries ? [] : (summaries[ws] ?? [])}
+                  />
                   <ChevronDown
                     size={14}
                     className={cn(
@@ -467,11 +460,8 @@ export default function WeekOverview({
                           <div className={cn("flex items-center gap-2 py-2 min-w-0", rowBorder)}>
                             {slot ? (
                               <>
-                                {slot.status === "completed" && (
-                                  <CheckCircle2 size={13} className="shrink-0 text-(--color-primary)" />
-                                )}
-                                {slot.status === "cooking" && (
-                                  <span className="w-2 h-2 shrink-0 rounded-full bg-(--color-warning)" />
+                                {slot.status !== "planned" && (
+                                  <WeekDot status={slot.status} size="sm" />
                                 )}
                                 <span className={cn(
                                   "text-sm truncate",

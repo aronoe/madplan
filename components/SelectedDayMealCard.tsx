@@ -24,6 +24,7 @@ import {
   Check,
   ChefHat,
   CheckCircle2,
+  Undo2,
 } from "lucide-react";
 import type { MealStatus } from "@/lib/types";
 
@@ -188,7 +189,7 @@ export default function SelectedDayMealCard({
         className="h-40 sm:h-48"
       />
 
-      {/* ── Unified status bar ────────────────────────────────────── */}
+      {/* ── Status bar ───────────────────────────────────────────── */}
       {(status === "completed" || status === "cooking" || (!loadingIng && ingredients.length > 0)) && (
         <div className={cn(
           "flex items-center gap-2.5 px-5 py-3 border-b border-(--color-border) min-h-11",
@@ -196,50 +197,64 @@ export default function SelectedDayMealCard({
             ? "bg-(--color-primary-subtle)"
             : status === "cooking"
             ? "bg-(--color-warning-subtle)"
-            : !loadingIng && missingItems.length === 0
-            ? "bg-(--color-primary-subtle)"
-            : "bg-(--color-saffron-subtle)",
+            : "bg-(--color-surface-2)",
         )}>
-          {status === "completed" ? (
+
+          {/* completed */}
+          {status === "completed" && (
             <>
               <CheckCircle2 size={15} className="text-(--color-primary) shrink-0" />
               <span className="text-sm font-semibold text-(--color-primary-text)">Aftensmad er lavet!</span>
               <button
                 type="button"
-                onClick={() => onStatusChange?.("planned")}
-                className="ml-auto text-xs text-(--color-text-muted) hover:text-(--color-text) cursor-pointer bg-transparent border-none p-0"
+                aria-label="Gå tilbage"
+                onClick={() => onStatusChange?.("cooking")}
+                className="ml-auto text-(--color-primary) hover:opacity-60 cursor-pointer bg-transparent border-none p-0"
               >
-                Fortryd
+                <Undo2 size={16} />
               </button>
             </>
-          ) : (
+          )}
+
+          {/* cooking */}
+          {status === "cooking" && (
             <>
-              {status === "cooking" && (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-(--color-warning) shrink-0" />
-                  <span className="text-sm font-medium text-(--color-warning-text)">Madlavning i gang</span>
-                  {!loadingIng && ingredients.length > 0 && (
-                    <span className="text-(--color-warning-text)/40 text-xs select-none">·</span>
-                  )}
-                </>
-              )}
-              {!loadingIng && ingredients.length > 0 && (
-                missingItems.length === 0 ? (
-                  <span className="flex items-center gap-1.5 text-sm text-(--color-primary-text)">
-                    <Check size={13} className="shrink-0 text-(--color-primary)" strokeWidth={2.5} />
-                    Alle varer er købt
-                  </span>
-                ) : (
-                  <Link
-                    href="/shopping-list"
-                    className="flex items-center gap-1.5 text-sm font-medium text-(--color-saffron-text) hover:text-(--color-text)"
-                  >
-                    <ShoppingCart size={13} />
-                    {missingItems.length} varer mangler
-                  </Link>
-                )
-              )}
+              <span className="w-2 h-2 rounded-full bg-(--color-warning) shrink-0" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-(--color-warning)">Madlavning i gang</span>
+                {!loadingIng && ingredients.length > 0 && missingItems.length === 0 && (
+                  <span className="text-xs text-(--color-text-muted)">Alle varer er købt</span>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Gå tilbage"
+                onClick={() => onStatusChange?.("planned")}
+                className="ml-auto text-(--color-warning) hover:opacity-60 cursor-pointer bg-transparent border-none p-0"
+              >
+                <Undo2 size={16} />
+              </button>
             </>
+          )}
+
+          {/* planned */}
+          {status === "planned" && !loadingIng && ingredients.length > 0 && (
+            missingItems.length === 0 ? (
+              <>
+                <CheckCircle2 size={15} className="text-(--color-text-muted) shrink-0" />
+                <span className="text-sm font-medium text-(--color-text-muted)">Alle varer er købt</span>
+              </>
+            ) : (
+              <>
+                <ShoppingCart size={14} className="text-(--color-text-muted) shrink-0" />
+                <Link
+                  href="/shopping-list"
+                  className="text-sm font-medium text-(--color-text-muted) hover:text-(--color-text) hover:underline underline-offset-2"
+                >
+                  {missingItems.length} varer mangler
+                </Link>
+              </>
+            )
           )}
         </div>
       )}

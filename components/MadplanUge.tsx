@@ -30,7 +30,7 @@ import SelectedDayMealCard from "@/components/SelectedDayMealCard";
 import { RecipeImageThumb } from "@/components/RecipeImage";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { ChevronLeft, ChevronRight, Plus, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 const DAGE = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 const DAGE_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -100,12 +100,10 @@ function DagSlot({
           <div className="relative w-full h-full">
             <RecipeImageThumb imageUrl={imageUrl} name={meal.name} />
             {status === "completed" && (
-              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-(--color-primary) rounded-full flex items-center justify-center shadow-sm">
-                <Check size={8} className="text-white" strokeWidth={3} />
-              </span>
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-(--color-primary) shadow-sm" />
             )}
             {status === "cooking" && (
-              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-(--color-warning) shadow-sm" />
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-neutral-400 shadow-sm" />
             )}
           </div>
         ) : (
